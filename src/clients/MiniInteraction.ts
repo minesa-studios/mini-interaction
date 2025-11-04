@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import path from "node:path";
@@ -710,34 +711,95 @@ export class MiniInteraction {
 	 * Resolves the absolute commands directory path from configuration.
 	 */
 	private resolveCommandsDirectory(commandsDirectory?: string): string {
-		return this.resolveDirectory("../commands", commandsDirectory);
+		return this.resolveDirectory("commands", commandsDirectory);
 	}
 
 	/**
 	 * Resolves the absolute components directory path from configuration.
 	 */
 	private resolveComponentsDirectory(componentsDirectory?: string): string {
-		return this.resolveDirectory("../components", componentsDirectory);
+		return this.resolveDirectory("components", componentsDirectory);
 	}
 
 	/**
-	 * Resolves a directory relative to the compiled file with optional overrides.
+	 * Resolves a directory relative to the project "src" or "dist" folders with optional overrides.
 	 */
 	private resolveDirectory(
-		defaultRelativePath: string,
+		defaultFolder: string,
 		overrideDirectory?: string,
 	): string {
-		const __filename = fileURLToPath(import.meta.url);
-		const __dirname = path.dirname(__filename);
-		const defaultDir = path.resolve(__dirname, defaultRelativePath);
+		const projectRoot = process.cwd();
+		const allowedRoots = ["src", "dist"].map((folder) =>
+			path.resolve(projectRoot, folder),
+		);
+		const candidates: string[] = [];
 
-		if (!overrideDirectory) {
-			return defaultDir;
+		const isWithin = (parent: string, child: string): boolean => {
+			const relative = path.relative(parent, child);
+			return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+		};
+
+		const pushCandidate = (candidate: string): void => {
+			if (!candidates.includes(candidate)) {
+				candidates.push(candidate);
+			}
+		};
+
+		const ensureWithinAllowedRoots = (absolutePath: string): void => {
+			if (!allowedRoots.some((root) => isWithin(root, absolutePath))) {
+				throw new Error(
+					`[MiniInteraction] Directory overrides must be located within "${path.join(projectRoot, "src")}" or "${path.join(
+						projectRoot,
+						"dist",
+					)}". Received: ${absolutePath}`,
+				);
+			}
+
+			pushCandidate(absolutePath);
+		};
+
+		const addOverrideCandidates = (overridePath: string): void => {
+			const trimmed = overridePath.trim();
+			if (!trimmed) {
+				return;
+			}
+
+			if (path.isAbsolute(trimmed)) {
+				ensureWithinAllowedRoots(trimmed);
+				return;
+			}
+
+			const normalised = trimmed.replace(/^[./\\]+/, "");
+			if (!normalised) {
+				return;
+			}
+
+			if (normalised.startsWith("src") || normalised.startsWith("dist")) {
+				const absolutePath = path.resolve(projectRoot, normalised);
+				ensureWithinAllowedRoots(absolutePath);
+				return;
+			}
+
+			for (const root of allowedRoots) {
+				ensureWithinAllowedRoots(path.resolve(root, normalised));
+			}
+		};
+
+		if (overrideDirectory) {
+			addOverrideCandidates(overrideDirectory);
 		}
 
-		return path.isAbsolute(overrideDirectory)
-			? overrideDirectory
-			: path.resolve(process.cwd(), overrideDirectory);
+		for (const root of allowedRoots) {
+			pushCandidate(path.resolve(root, defaultFolder));
+		}
+
+		for (const candidate of candidates) {
+			if (existsSync(candidate)) {
+				return candidate;
+			}
+		}
+
+		return candidates[0];
 	}
 
 	/**
