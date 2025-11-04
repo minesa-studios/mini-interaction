@@ -44,12 +44,13 @@ export type {
 export { RoleConnectionMetadataTypes } from "./types/RoleConnectionMetadataTypes.js";
 export { ChannelType } from "./types/ChannelType.js";
 export {
-	InteractionFollowUpFlags,
-	InteractionReplyFlags,
+        InteractionFollowUpFlags,
+        InteractionReplyFlags,
 } from "./types/InteractionFlags.js";
 export { ButtonStyle } from "./types/ButtonStyle.js";
+export { MiniPermFlags } from "./types/PermissionFlags.js";
 export type {
-	MiniComponentActionRow,
-	MiniComponentMessageActionRow,
+        MiniComponentActionRow,
+        MiniComponentMessageActionRow,
 } from "./types/ComponentTypes.js";
 export * from "./builders/index.js";
