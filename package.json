@@ -2,20 +2,37 @@
 	"name": "@minesa-org/mini-interaction",
 	"version": "0.0.1",
 	"description": "Mini interaction, connecting your app with Discord via HTTP-interaction (Vercel support).",
+	"type": "module",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
+	"files": [
+		"dist",
+		"README.md",
+		"LICENSE"
+	],
 	"scripts": {
 		"build": "tsc --project tsconfig.json",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --noEmit",
+		"prepare": "npm run build",
+		"publish:npm": "npm publish",
+		"publish:gh": "npm publish --registry=https://npm.pkg.github.com"
+	},
+	"publishConfig": {
+		"access": "public"
 	},
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/minesa-org/mini-interaction.git"
 	},
-	"keywords": [],
+	"keywords": [
+		"discord",
+		"interactions",
+		"http-interaction",
+		"vercel",
+		"typescript"
+	],
 	"author": "Minesa",
 	"license": "MIT",
-	"type": "module",
 	"bugs": {
 		"url": "https://github.com/minesa-org/mini-interaction/issues"
 	},
