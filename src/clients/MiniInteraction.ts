@@ -1,7 +1,7 @@
 import { readdir, stat } from "node:fs/promises";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import type {
 	APIChatInputApplicationCommandInteraction,
 	APIMessageComponentInteraction,
@@ -710,13 +710,34 @@ export class MiniInteraction {
 	 * Resolves the absolute commands directory path from configuration.
 	 */
 	private resolveCommandsDirectory(commandsDirectory?: string): string {
-		if (!commandsDirectory) {
-			return path.resolve(process.cwd(), "src/commands");
+		return this.resolveDirectory("../commands", commandsDirectory);
+	}
+
+	/**
+	 * Resolves the absolute components directory path from configuration.
+	 */
+	private resolveComponentsDirectory(componentsDirectory?: string): string {
+		return this.resolveDirectory("../components", componentsDirectory);
+	}
+
+	/**
+	 * Resolves a directory relative to the compiled file with optional overrides.
+	 */
+	private resolveDirectory(
+		defaultRelativePath: string,
+		overrideDirectory?: string,
+	): string {
+		const __filename = fileURLToPath(import.meta.url);
+		const __dirname = path.dirname(__filename);
+		const defaultDir = path.resolve(__dirname, defaultRelativePath);
+
+		if (!overrideDirectory) {
+			return defaultDir;
 		}
 
-		return path.isAbsolute(commandsDirectory)
-			? commandsDirectory
-			: path.resolve(process.cwd(), commandsDirectory);
+		return path.isAbsolute(overrideDirectory)
+			? overrideDirectory
+			: path.resolve(process.cwd(), overrideDirectory);
 	}
 
 	/**
