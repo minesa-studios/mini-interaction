@@ -42,6 +42,7 @@ export type {
 	MiniInteractionComponentHandler,
 	MiniInteractionModal,
 	MiniInteractionModalHandler,
+	MiniInteractionHandler,
 } from "./clients/MiniInteraction.js";
 export type { MessageComponentInteraction } from "./utils/MessageComponentInteraction.js";
 export type { ModalSubmitInteraction } from "./utils/ModalSubmitInteraction.js";

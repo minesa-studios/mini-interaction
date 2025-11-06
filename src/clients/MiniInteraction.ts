@@ -78,16 +78,27 @@ export type MiniInteractionComponentHandler = (
 	interaction: MessageComponentInteraction,
 ) => Promise<APIInteractionResponse | void> | APIInteractionResponse | void;
 
-/** Structure describing a component handler mapped to a custom id. */
-export type MiniInteractionComponent = {
-	customId: string;
-	handler: MiniInteractionComponentHandler;
-};
-
 /** Handler signature invoked for Discord modal submit interactions. */
 export type MiniInteractionModalHandler = (
 	interaction: ModalSubmitInteraction,
 ) => Promise<APIInteractionResponse | void> | APIInteractionResponse | void;
+
+/** Unified handler signature that accepts both component and modal interactions. */
+export type MiniInteractionHandler =
+	| MiniInteractionComponentHandler
+	| MiniInteractionModalHandler;
+
+/**
+ * Structure describing a component or modal handler mapped to a custom id.
+ * When auto-loading from the components directory:
+ * - Files in `components/modals/` are treated as modal handlers
+ * - Other files are treated as component handlers
+ * You can use this type for both - the system will figure out which one it is.
+ */
+export type MiniInteractionComponent = {
+	customId: string;
+	handler: MiniInteractionHandler;
+};
 
 /** Structure describing a modal handler mapped to a custom id. */
 export type MiniInteractionModal = {
@@ -254,7 +265,10 @@ export class MiniInteraction {
 			);
 		}
 
-		this.componentHandlers.set(customId, component.handler);
+		this.componentHandlers.set(
+			customId,
+			component.handler as MiniInteractionComponentHandler,
+		);
 		return this;
 	}
 
