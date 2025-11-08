@@ -65,69 +65,66 @@ type BaseComponentInteractionHelpers = {
  * Button interaction with helper methods.
  * Buttons don't have values or resolved data.
  */
-export type ButtonInteraction = Omit<APIMessageComponentInteraction, "data"> & {
+export interface ButtonInteraction
+	extends Omit<APIMessageComponentInteraction, "data">,
+		BaseComponentInteractionHelpers {
 	data: APIMessageButtonInteractionData;
-} & BaseComponentInteractionHelpers;
+}
 
 /**
  * String select menu interaction with helper methods.
  */
-export type StringSelectInteraction = Omit<
-	APIMessageComponentInteraction,
-	"data"
-> & {
+export interface StringSelectInteraction
+	extends Omit<APIMessageComponentInteraction, "data">,
+		BaseComponentInteractionHelpers {
 	data: APIMessageStringSelectInteractionData;
 	values: string[];
 	getStringValues: () => string[];
-} & BaseComponentInteractionHelpers;
+}
 
 /**
  * Role select menu interaction with helper methods.
  */
-export type RoleSelectInteraction = Omit<
-	APIMessageComponentInteraction,
-	"data"
-> & {
+export interface RoleSelectInteraction
+	extends Omit<APIMessageComponentInteraction, "data">,
+		BaseComponentInteractionHelpers {
 	data: APIMessageRoleSelectInteractionData;
 	values: string[];
 	getRoles: () => APIRole[];
-} & BaseComponentInteractionHelpers;
+}
 
 /**
  * User select menu interaction with helper methods.
  */
-export type UserSelectInteraction = Omit<
-	APIMessageComponentInteraction,
-	"data"
-> & {
+export interface UserSelectInteraction
+	extends Omit<APIMessageComponentInteraction, "data">,
+		BaseComponentInteractionHelpers {
 	data: APIMessageUserSelectInteractionData;
 	values: string[];
 	getUsers: () => ResolvedUserOption[];
-} & BaseComponentInteractionHelpers;
+}
 
 /**
  * Channel select menu interaction with helper methods.
  */
-export type ChannelSelectInteraction = Omit<
-	APIMessageComponentInteraction,
-	"data"
-> & {
+export interface ChannelSelectInteraction
+	extends Omit<APIMessageComponentInteraction, "data">,
+		BaseComponentInteractionHelpers {
 	data: APIMessageChannelSelectInteractionData;
 	values: string[];
 	getChannels: () => APIInteractionDataResolvedChannel[];
-} & BaseComponentInteractionHelpers;
+}
 
 /**
  * Mentionable select menu interaction with helper methods.
  */
-export type MentionableSelectInteraction = Omit<
-	APIMessageComponentInteraction,
-	"data"
-> & {
+export interface MentionableSelectInteraction
+	extends Omit<APIMessageComponentInteraction, "data">,
+		BaseComponentInteractionHelpers {
 	data: APIMessageMentionableSelectInteractionData;
 	values: string[];
 	getMentionables: () => ResolvedMentionableOption[];
-} & BaseComponentInteractionHelpers;
+}
 
 /**
  * Represents a component interaction augmented with helper response methods.
