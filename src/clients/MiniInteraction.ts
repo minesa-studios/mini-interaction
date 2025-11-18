@@ -824,6 +824,12 @@ export class MiniInteraction {
 	 * This is primarily used when Discord asks for a verification URL while setting up Linked Roles.
 	 * Provide an HTML file that contains the `{{OAUTH_URL}}` placeholder (or a custom placeholder defined in options)
 	 * and this helper will replace the token with a freshly generated OAuth link on every request.
+	 *
+	 * Available placeholders:
+	 * - `{{OAUTH_URL}}` - HTML-escaped OAuth URL for links/buttons.
+	 * - `{{OAUTH_URL_RAW}}` - raw OAuth URL, ideal for `<script>` usage.
+	 * - `{{OAUTH_STATE}}` - HTML-escaped OAuth state value.
+	 * - Custom placeholder name (from {@link DiscordOAuthVerificationPageOptions.placeholder}) and its `_RAW` variant.
 	 */
 	discordOAuthVerificationPage(
 		options: DiscordOAuthVerificationPageOptions = {},
@@ -840,13 +846,28 @@ export class MiniInteraction {
 		return (_request, response) => {
 			try {
 				const { url, state } = generateOAuthUrl(oauthConfig, scopes);
-				const html = this.renderHtmlTemplate(template, {
+				const values: Record<string, string | null | undefined> = {
 					OAUTH_URL: url,
+					OAUTH_URL_RAW: url,
 					OAUTH_STATE: state,
-					...(placeholderKey !== "OAUTH_URL"
-						? { [placeholderKey]: url }
-						: {}),
-				});
+				};
+
+				const rawKeys = new Set<string>(["OAUTH_URL_RAW"]);
+
+				if (placeholderKey !== "OAUTH_URL") {
+					values[placeholderKey] = url;
+					const rawVariant = `${placeholderKey}_RAW`;
+					values[rawVariant] = url;
+					rawKeys.add(rawVariant);
+				}
+
+				const html = this.renderHtmlTemplate(
+					template,
+					values,
+					{
+						rawKeys,
+					},
+				);
 
 				sendHtml(response, html);
 			} catch (error) {
@@ -951,18 +972,25 @@ export class MiniInteraction {
 
         /**
          * Replaces placeholder tokens in a template with escaped HTML values.
-         */
+	 */
 	private renderHtmlTemplate(
 		template: string,
 		values: Record<string, string | null | undefined>,
+		options?: HtmlTemplateRenderOptions,
 	): string {
-                return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (match, key: string) => {
-                        const value = values[key];
-                        if (value === undefined || value === null) {
-                                return "";
-                        }
+                const rawKeys =
+                        options?.rawKeys instanceof Set
+                                ? options.rawKeys
+                                : new Set(options?.rawKeys ?? []);
 
-                        return escapeHtml(String(value));
+		return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (match, key: string) => {
+			const value = values[key];
+			if (value === undefined || value === null) {
+				return "";
+			}
+
+			const stringValue = String(value);
+			return rawKeys.has(key) ? stringValue : escapeHtml(stringValue);
 		});
 	}
 
@@ -1788,6 +1816,10 @@ export class MiniInteraction {
 		}
 	}
 }
+
+type HtmlTemplateRenderOptions = {
+	rawKeys?: Iterable<string>;
+};
 
 const DEFAULT_DISCORD_OAUTH_TEMPLATES: DiscordOAuthCallbackTemplates = {
         success: ({ user }) => {
