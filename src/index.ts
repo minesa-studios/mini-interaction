@@ -47,6 +47,7 @@ export type {
         DiscordOAuthServerErrorTemplateContext,
         DiscordOAuthStateTemplateContext,
         DiscordOAuthSuccessTemplateContext,
+        DiscordOAuthVerificationPageOptions,
 } from "./clients/MiniInteraction.js";
 export type {
 	MiniInteractionCommand,

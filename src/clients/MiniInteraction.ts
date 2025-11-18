@@ -44,6 +44,7 @@ import {
         type MessageContextMenuInteraction,
 } from "../utils/ContextMenuInteraction.js";
 import {
+        generateOAuthUrl,
         getOAuthTokens,
         getDiscordUser,
         type OAuthConfig,
@@ -223,6 +224,24 @@ export type DiscordOAuthCallbackOptions = {
                 | string
                 | ((context: DiscordOAuthAuthorizeContext) => string | null | undefined);
         templates?: Partial<DiscordOAuthCallbackTemplates>;
+};
+
+/** Options accepted by {@link MiniInteraction.discordOAuthVerificationPage}. */
+export type DiscordOAuthVerificationPageOptions = {
+        oauth?: OAuthConfig;
+        scopes?: string[];
+        /**
+         * Path to the HTML file to load. Relative paths resolve from {@link process.cwd}.
+         *
+         * @defaultValue "index.html"
+         */
+        htmlFile?: string;
+        /**
+         * Placeholder token (with or without the `{{ }}` wrapper) that will be replaced with the generated OAuth URL.
+         *
+         * @defaultValue "OAUTH_URL"
+         */
+        placeholder?: string;
 };
 
 /**
@@ -799,12 +818,57 @@ export class MiniInteraction {
 		};
 	}
 
-        /**
-         * Loads an HTML file and returns a success template that replaces useful placeholders.
-         *
-         * The following placeholders are available in the HTML file:
-         * - `{{username}}`, `{{discriminator}}`, `{{user_id}}`, `{{user_tag}}`
-         * - `{{access_token}}`, `{{refresh_token}}`, `{{token_type}}`, `{{scope}}`, `{{expires_at}}`
+	/**
+	 * Generates a lightweight verification handler that serves an HTML page with an embedded OAuth link.
+	 *
+	 * This is primarily used when Discord asks for a verification URL while setting up Linked Roles.
+	 * Provide an HTML file that contains the `{{OAUTH_URL}}` placeholder (or a custom placeholder defined in options)
+	 * and this helper will replace the token with a freshly generated OAuth link on every request.
+	 */
+	discordOAuthVerificationPage(
+		options: DiscordOAuthVerificationPageOptions = {},
+	): MiniInteractionNodeHandler {
+		const scopes =
+			options.scopes ?? ["identify", "role_connections.write"];
+		const htmlFile = options.htmlFile ?? "index.html";
+		const placeholderKey = this.normalizeTemplateKey(
+			options.placeholder ?? "OAUTH_URL",
+		);
+		const template = this.loadHtmlTemplate(htmlFile);
+		const oauthConfig = resolveOAuthConfig(options.oauth);
+
+		return (_request, response) => {
+			try {
+				const { url, state } = generateOAuthUrl(oauthConfig, scopes);
+				const html = this.renderHtmlTemplate(template, {
+					OAUTH_URL: url,
+					OAUTH_STATE: state,
+					...(placeholderKey !== "OAUTH_URL"
+						? { [placeholderKey]: url }
+						: {}),
+				});
+
+				sendHtml(response, html);
+			} catch (error) {
+				console.error(
+					"[MiniInteraction] Failed to render OAuth verification page:",
+					error,
+				);
+				sendHtml(
+					response,
+					DEFAULT_VERIFICATION_ERROR_HTML,
+					500,
+				);
+			}
+		};
+	}
+
+	/**
+	 * Loads an HTML file and returns a success template that replaces useful placeholders.
+	 *
+	 * The following placeholders are available in the HTML file:
+	 * - `{{username}}`, `{{discriminator}}`, `{{user_id}}`, `{{user_tag}}`
+	 * - `{{access_token}}`, `{{refresh_token}}`, `{{token_type}}`, `{{scope}}`, `{{expires_at}}`
          * - `{{state}}`
          */
         connectedOAuthPage(
@@ -888,10 +952,10 @@ export class MiniInteraction {
         /**
          * Replaces placeholder tokens in a template with escaped HTML values.
          */
-        private renderHtmlTemplate(
-                template: string,
-                values: Record<string, string | null | undefined>,
-        ): string {
+	private renderHtmlTemplate(
+		template: string,
+		values: Record<string, string | null | undefined>,
+	): string {
                 return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (match, key: string) => {
                         const value = values[key];
                         if (value === undefined || value === null) {
@@ -899,8 +963,25 @@ export class MiniInteraction {
                         }
 
                         return escapeHtml(String(value));
-                });
-        }
+		});
+	}
+
+	/**
+	 * Normalizes placeholder tokens to the bare key the HTML renderer expects.
+	 */
+	private normalizeTemplateKey(token: string): string {
+		if (!token) {
+			return "OAUTH_URL";
+		}
+
+		const trimmed = token.trim();
+		const match = trimmed.match(/^\{\{\s*(\w+)\s*\}\}$/);
+		if (match) {
+			return match[1];
+		}
+
+		return trimmed || "OAUTH_URL";
+	}
 
         /**
          * Creates a minimal Discord OAuth callback handler that renders helpful HTML responses.
@@ -1816,6 +1897,23 @@ const DEFAULT_DISCORD_OAUTH_TEMPLATES: DiscordOAuthCallbackTemplates = {
 </body>
 </html>`,
 };
+
+const DEFAULT_VERIFICATION_ERROR_HTML = `<!DOCTYPE html>
+<html>
+<head>
+        <meta charset="utf-8" />
+        <title>Server Error</title>
+        <style>
+                body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; text-align: center; }
+                .error { color: #d32f2f; background: #ffebee; padding: 15px; border-radius: 5px; display: inline-block; }
+        </style>
+</head>
+<body>
+        <div class="error">
+                <p>We were unable to load the Discord verification page. Please try again later.</p>
+        </div>
+</body>
+</html>`;
 
 function sendHtml(response: ServerResponse, body: string, statusCode = 200): void {
         if (response.headersSent || response.writableEnded) {
