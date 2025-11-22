@@ -10,9 +10,14 @@ import type {
 	MessageContextMenuInteraction,
 } from "../utils/ContextMenuInteraction.js";
 import type {
-	MiniInteractionComponent,
-	MiniInteractionModal,
+        MiniInteractionComponent,
+        MiniInteractionModal,
 } from "../clients/MiniInteraction.js";
+import type { CommandBuilder } from "../commands/CommandBuilder.js";
+import type {
+        MessageCommandBuilder,
+        UserCommandBuilder,
+} from "../commands/ContextMenuCommandBuilder.js";
 
 /** Handler signature for slash command executions within MiniInteraction. */
 export type SlashCommandHandler = (
@@ -37,13 +42,16 @@ export type CommandHandler =
 
 /** Structure representing a slash command definition and its runtime handler. */
 export type MiniInteractionCommand = {
-	data:
-		| RESTPostAPIChatInputApplicationCommandsJSONBody
-		| RESTPostAPIContextMenuApplicationCommandsJSONBody;
-	handler: CommandHandler;
-	/**
-	 * Optional array of component handlers related to this command.
-	 * These will be automatically registered when the command is loaded.
+        data:
+                | RESTPostAPIChatInputApplicationCommandsJSONBody
+                | RESTPostAPIContextMenuApplicationCommandsJSONBody
+                | CommandBuilder
+                | UserCommandBuilder
+                | MessageCommandBuilder;
+        handler: CommandHandler;
+        /**
+         * Optional array of component handlers related to this command.
+         * These will be automatically registered when the command is loaded.
 	 */
 	components?: MiniInteractionComponent[];
 	/**

@@ -128,7 +128,7 @@ export type MiniInteractionMentionableSelectHandler = (
 
 /** Handler signature invoked for Discord message component interactions (generic). */
 export type MiniInteractionComponentHandler = (
-	interaction: MessageComponentInteraction,
+        interaction: MessageComponentInteraction,
 ) => Promise<APIInteractionResponse | void> | APIInteractionResponse | void;
 
 /** Handler signature invoked for Discord modal submit interactions. */
@@ -138,14 +138,22 @@ export type MiniInteractionModalHandler = (
 
 /** Unified handler signature that accepts any component or modal interaction. */
 export type MiniInteractionHandler =
-	| MiniInteractionButtonHandler
-	| MiniInteractionStringSelectHandler
-	| MiniInteractionRoleSelectHandler
-	| MiniInteractionUserSelectHandler
-	| MiniInteractionChannelSelectHandler
-	| MiniInteractionMentionableSelectHandler
-	| MiniInteractionComponentHandler
-	| MiniInteractionModalHandler;
+        | MiniInteractionButtonHandler
+        | MiniInteractionStringSelectHandler
+        | MiniInteractionRoleSelectHandler
+        | MiniInteractionUserSelectHandler
+        | MiniInteractionChannelSelectHandler
+        | MiniInteractionMentionableSelectHandler
+        | MiniInteractionComponentHandler
+        | MiniInteractionModalHandler;
+
+type CommandDataPayload =
+        | RESTPostAPIChatInputApplicationCommandsJSONBody
+        | RESTPostAPIContextMenuApplicationCommandsJSONBody;
+
+type RegisteredMiniInteractionCommand = Omit<MiniInteractionCommand, "data"> & {
+        data: CommandDataPayload;
+};
 
 /**
  * Structure describing a component or modal handler mapped to a custom id.
@@ -328,41 +336,59 @@ export class MiniInteraction {
                                 : this.resolveUtilsDirectory(utilsDirectory);
         }
 
-	/**
-	 * Registers a single command handler with the client.
-	 *
-	 * @param command - The command definition to register.
-	 */
-	useCommand(command: MiniInteractionCommand): this {
-		const commandName = command?.data?.name;
-		if (!commandName) {
-			throw new Error("[MiniInteraction] command.data.name is required");
-		}
+        private normalizeCommandData(data: MiniInteractionCommand["data"]): CommandDataPayload {
+                if (typeof data === "object" && data !== null) {
+                        const toJSON = (data as { toJSON?: unknown }).toJSON;
+                        if (typeof toJSON === "function") {
+                                return toJSON.call(data) as CommandDataPayload;
+                        }
+                }
 
-		if (this.commands.has(commandName)) {
-			console.warn(
-				`[MiniInteraction] Command "${commandName}" already exists and will be overwritten.`,
-			);
-		}
+                return data as CommandDataPayload;
+        }
 
-		this.commands.set(commandName, command);
+        private registerCommand(command: MiniInteractionCommand): void {
+                const normalizedData = this.normalizeCommandData(command.data);
+                const commandName = normalizedData?.name;
+                if (!commandName) {
+                        throw new Error("[MiniInteraction] command.data.name is required");
+                }
 
-		// Register components exported with the command
-		if (command.components && Array.isArray(command.components)) {
-			for (const component of command.components) {
-				this.useComponent(component);
-			}
-		}
+                if (this.commands.has(commandName)) {
+                        console.warn(
+                                `[MiniInteraction] Command "${commandName}" already exists and will be overwritten.`,
+                        );
+                }
 
-		// Register modals exported with the command
-		if (command.modals && Array.isArray(command.modals)) {
-			for (const modal of command.modals) {
-				this.useModal(modal);
-			}
-		}
+                const normalizedCommand: RegisteredMiniInteractionCommand = {
+                        ...command,
+                        data: normalizedData,
+                };
 
-		return this;
-	}
+                this.commands.set(commandName, normalizedCommand);
+
+                if (normalizedCommand.components && Array.isArray(normalizedCommand.components)) {
+                        for (const component of normalizedCommand.components) {
+                                this.useComponent(component);
+                        }
+                }
+
+                if (normalizedCommand.modals && Array.isArray(normalizedCommand.modals)) {
+                        for (const modal of normalizedCommand.modals) {
+                                this.useModal(modal);
+                        }
+                }
+        }
+
+        /**
+         * Registers a single command handler with the client.
+         *
+         * @param command - The command definition to register.
+         */
+        useCommand(command: MiniInteractionCommand): this {
+                this.registerCommand(command);
+                return this;
+        }
 
 	/**
 	 * Registers multiple command handlers with the client.
@@ -548,28 +574,14 @@ export class MiniInteraction {
 			return this;
 		}
 
-		for (const file of files) {
-			const command = await this.importCommandModule(file);
-			if (!command) {
-				continue;
-			}
+                for (const file of files) {
+                        const command = await this.importCommandModule(file);
+                        if (!command) {
+                                continue;
+                        }
 
-			this.commands.set(command.data.name, command);
-
-			// Register components exported from the command file
-			if (command.components && Array.isArray(command.components)) {
-				for (const component of command.components) {
-					this.useComponent(component);
-				}
-			}
-
-			// Register modals exported from the command file
-			if (command.modals && Array.isArray(command.modals)) {
-				for (const modal of command.modals) {
-					this.useModal(modal);
-				}
-			}
-		}
+                        this.registerCommand(command);
+                }
 
 		this.commandsLoaded = true;
 
@@ -1342,27 +1354,29 @@ export class MiniInteraction {
 				return null;
 			}
 
-			const { data, handler } = candidate as MiniInteractionCommand;
+                        const { data, handler, components, modals } =
+                                candidate as MiniInteractionCommand;
+                        const normalizedData = this.normalizeCommandData(data);
 
-			if (!data || typeof data.name !== "string") {
-				console.warn(
-					`[MiniInteraction] Command module "${absolutePath}" is missing "data.name". Skipping.`,
-				);
-				return null;
-			}
+                        if (!normalizedData || typeof normalizedData.name !== "string") {
+                                console.warn(
+                                        `[MiniInteraction] Command module "${absolutePath}" is missing "data.name". Skipping.`,
+                                );
+                                return null;
+                        }
 
 			if (typeof handler !== "function") {
 				console.warn(
 					`[MiniInteraction] Command module "${absolutePath}" is missing a "handler" function. Skipping.`,
-				);
-				return null;
-			}
+                                );
+                                return null;
+                        }
 
-			return { data, handler };
-		} catch (error) {
-			console.error(
-				`[MiniInteraction] Failed to load command module "${absolutePath}":`,
-				error,
+                        return { data: normalizedData, handler, components, modals };
+                } catch (error) {
+                        console.error(
+                                `[MiniInteraction] Failed to load command module "${absolutePath}":`,
+                                error,
 			);
 			return null;
 		}
