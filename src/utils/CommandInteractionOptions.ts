@@ -538,6 +538,9 @@ export interface CommandInteraction
 		data: InteractionMessageData,
 	): APIInteractionResponseChannelMessageWithSource;
 	edit(data?: InteractionMessageData): APIInteractionResponseUpdateMessage;
+	editReply(
+		data?: InteractionMessageData,
+	): APIInteractionResponseUpdateMessage;
 	deferReply(
 		options?: DeferReplyOptions,
 	): APIInteractionResponseDeferredChannelMessageWithSource;
@@ -656,6 +659,12 @@ export function createCommandInteraction(
 			);
 		},
 		edit(data) {
+			return createMessageResponse(
+				InteractionResponseType.UpdateMessage,
+				data,
+			);
+		},
+		editReply(data) {
 			return createMessageResponse(
 				InteractionResponseType.UpdateMessage,
 				data,
