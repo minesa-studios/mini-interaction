@@ -4,20 +4,20 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import type {
-        APIApplicationCommandInteraction,
-        APIChatInputApplicationCommandInteraction,
-        APIMessageComponentInteraction,
-        APIModalSubmitInteraction,
+	APIApplicationCommandInteraction,
+	APIChatInputApplicationCommandInteraction,
+	APIMessageComponentInteraction,
+	APIModalSubmitInteraction,
 } from "discord-api-types/v10";
 import {
-        APIInteraction,
-        APIInteractionResponse,
-        ApplicationCommandType,
-        InteractionResponseType,
-        InteractionType,
-        RESTPostAPIChatInputApplicationCommandsJSONBody,
-        RESTPostAPIContextMenuApplicationCommandsJSONBody,
-        RESTPostAPIPrimaryEntryPointApplicationCommandJSONBody,
+	APIInteraction,
+	APIInteractionResponse,
+	ApplicationCommandType,
+	InteractionResponseType,
+	InteractionType,
+	RESTPostAPIChatInputApplicationCommandsJSONBody,
+	RESTPostAPIContextMenuApplicationCommandsJSONBody,
+	RESTPostAPIPrimaryEntryPointApplicationCommandJSONBody,
 } from "discord-api-types/v10";
 import { verifyKey } from "discord-interactions";
 
@@ -26,9 +26,9 @@ import type { MiniInteractionCommand } from "../types/Commands.js";
 import { RoleConnectionMetadataTypes } from "../types/RoleConnectionMetadataTypes.js";
 import { createCommandInteraction } from "../utils/CommandInteractionOptions.js";
 import {
-        createMessageComponentInteraction,
-        type MessageComponentInteraction,
-        type ButtonInteraction,
+	createMessageComponentInteraction,
+	type MessageComponentInteraction,
+	type ButtonInteraction,
 	type StringSelectInteraction,
 	type RoleSelectInteraction,
 	type UserSelectInteraction,
@@ -36,24 +36,24 @@ import {
 	type MentionableSelectInteraction,
 } from "../utils/MessageComponentInteraction.js";
 import {
-        createModalSubmitInteraction,
-        type ModalSubmitInteraction,
+	createModalSubmitInteraction,
+	type ModalSubmitInteraction,
 } from "../utils/ModalSubmitInteraction.js";
 import {
-        createUserContextMenuInteraction,
-        createMessageContextMenuInteraction,
-        createAppCommandInteraction,
-        type UserContextMenuInteraction,
-        type MessageContextMenuInteraction,
-        type AppCommandInteraction,
+	createUserContextMenuInteraction,
+	createMessageContextMenuInteraction,
+	createAppCommandInteraction,
+	type UserContextMenuInteraction,
+	type MessageContextMenuInteraction,
+	type AppCommandInteraction,
 } from "../utils/ContextMenuInteraction.js";
 import {
-        generateOAuthUrl,
-        getOAuthTokens,
-        getDiscordUser,
-        type OAuthConfig,
-        type OAuthTokens,
-        type DiscordUser,
+	generateOAuthUrl,
+	getOAuthTokens,
+	getDiscordUser,
+	type OAuthConfig,
+	type OAuthTokens,
+	type DiscordUser,
 } from "../oauth/DiscordOAuth.js";
 
 /** File extensions that are treated as loadable modules when auto-loading. */
@@ -68,13 +68,14 @@ const SUPPORTED_MODULE_EXTENSIONS = new Set([
 
 /** Configuration parameters for the MiniInteraction client. */
 export type MiniInteractionOptions = {
-        applicationId: string;
-        publicKey: string;
-        commandsDirectory?: string | false;
-        componentsDirectory?: string | false;
-        utilsDirectory?: string | false;
-        fetchImplementation?: typeof fetch;
-        verifyKeyImplementation?: VerifyKeyFunction;
+	applicationId: string;
+	publicKey: string;
+	commandsDirectory?: string | false;
+	componentsDirectory?: string | false;
+	utilsDirectory?: string | false;
+	fetchImplementation?: typeof fetch;
+	verifyKeyImplementation?: VerifyKeyFunction;
+	timeoutConfig?: InteractionTimeoutConfig;
 };
 
 /** Payload structure for role connection metadata registration. */
@@ -98,6 +99,16 @@ export type MiniInteractionRequest = {
 export type MiniInteractionHandlerResult = {
 	status: number;
 	body: APIInteractionResponse | { error: string };
+};
+
+/** Configuration for interaction timeout handling. */
+export type InteractionTimeoutConfig = {
+	/** Maximum time in milliseconds to wait for initial response (default: 2800ms) */
+	initialResponseTimeout?: number;
+	/** Whether to enable timeout warnings (default: true) */
+	enableTimeoutWarnings?: boolean;
+	/** Whether to force deferReply for slow operations (default: true) */
+	autoDeferSlowOperations?: boolean;
 };
 
 /** Handler signature invoked for Discord button interactions. */
@@ -132,7 +143,7 @@ export type MiniInteractionMentionableSelectHandler = (
 
 /** Handler signature invoked for Discord message component interactions (generic). */
 export type MiniInteractionComponentHandler = (
-        interaction: MessageComponentInteraction,
+	interaction: MessageComponentInteraction,
 ) => Promise<APIInteractionResponse | void> | APIInteractionResponse | void;
 
 /** Handler signature invoked for Discord modal submit interactions. */
@@ -142,22 +153,22 @@ export type MiniInteractionModalHandler = (
 
 /** Unified handler signature that accepts any component or modal interaction. */
 export type MiniInteractionHandler =
-        | MiniInteractionButtonHandler
-        | MiniInteractionStringSelectHandler
-        | MiniInteractionRoleSelectHandler
-        | MiniInteractionUserSelectHandler
-        | MiniInteractionChannelSelectHandler
-        | MiniInteractionMentionableSelectHandler
-        | MiniInteractionComponentHandler
-        | MiniInteractionModalHandler;
+	| MiniInteractionButtonHandler
+	| MiniInteractionStringSelectHandler
+	| MiniInteractionRoleSelectHandler
+	| MiniInteractionUserSelectHandler
+	| MiniInteractionChannelSelectHandler
+	| MiniInteractionMentionableSelectHandler
+	| MiniInteractionComponentHandler
+	| MiniInteractionModalHandler;
 
 type CommandDataPayload =
-        | RESTPostAPIChatInputApplicationCommandsJSONBody
-        | RESTPostAPIContextMenuApplicationCommandsJSONBody
-        | RESTPostAPIPrimaryEntryPointApplicationCommandJSONBody;
+	| RESTPostAPIChatInputApplicationCommandsJSONBody
+	| RESTPostAPIContextMenuApplicationCommandsJSONBody
+	| RESTPostAPIPrimaryEntryPointApplicationCommandJSONBody;
 
 type RegisteredMiniInteractionCommand = Omit<MiniInteractionCommand, "data"> & {
-        data: CommandDataPayload;
+	data: CommandDataPayload;
 };
 
 /**
@@ -186,83 +197,90 @@ export type MiniInteractionNodeHandler = (
 
 /** Web Fetch API compatible request handler for platforms such as Cloudflare Workers. */
 export type MiniInteractionFetchHandler = (
-        request: Request,
+	request: Request,
 ) => Promise<Response>;
 
 /** Context passed to OAuth success handlers and templates. */
 export type DiscordOAuthAuthorizeContext = {
-        tokens: OAuthTokens;
-        user: DiscordUser;
-        state: string | null;
-        request: IncomingMessage;
-        response: ServerResponse;
+	tokens: OAuthTokens;
+	user: DiscordUser;
+	state: string | null;
+	request: IncomingMessage;
+	response: ServerResponse;
 };
 
 /** Context provided to templates that only need access to the state value. */
 export type DiscordOAuthStateTemplateContext = {
-        state: string | null;
+	state: string | null;
 };
 
 /** Context provided to templates that display OAuth error messages. */
-export type DiscordOAuthErrorTemplateContext = DiscordOAuthStateTemplateContext & {
-        error: string;
-};
+export type DiscordOAuthErrorTemplateContext =
+	DiscordOAuthStateTemplateContext & {
+		error: string;
+	};
 
 /** Context provided to templates used for successful authorisation messages. */
-export type DiscordOAuthSuccessTemplateContext = DiscordOAuthStateTemplateContext & {
-        user: DiscordUser;
-        tokens: OAuthTokens;
-};
+export type DiscordOAuthSuccessTemplateContext =
+	DiscordOAuthStateTemplateContext & {
+		user: DiscordUser;
+		tokens: OAuthTokens;
+	};
 
 /** Context provided to templates that handle server side failures. */
-export type DiscordOAuthServerErrorTemplateContext = DiscordOAuthStateTemplateContext;
+export type DiscordOAuthServerErrorTemplateContext =
+	DiscordOAuthStateTemplateContext;
 
 /** Template functions used to render HTML responses during the OAuth flow. */
 export type DiscordOAuthCallbackTemplates = {
-        success: (context: DiscordOAuthSuccessTemplateContext) => string;
-        missingCode: (context: DiscordOAuthStateTemplateContext) => string;
-        oauthError: (context: DiscordOAuthErrorTemplateContext) => string;
-        invalidState: (context: DiscordOAuthStateTemplateContext) => string;
-        serverError: (context: DiscordOAuthServerErrorTemplateContext) => string;
+	success: (context: DiscordOAuthSuccessTemplateContext) => string;
+	missingCode: (context: DiscordOAuthStateTemplateContext) => string;
+	oauthError: (context: DiscordOAuthErrorTemplateContext) => string;
+	invalidState: (context: DiscordOAuthStateTemplateContext) => string;
+	serverError: (context: DiscordOAuthServerErrorTemplateContext) => string;
 };
 
 /** Options accepted by {@link MiniInteraction.discordOAuthCallback}. */
 export type DiscordOAuthCallbackOptions = {
-        oauth?: OAuthConfig;
-        onAuthorize?: (context: DiscordOAuthAuthorizeContext) => Promise<void> | void;
-        validateState?: (
-                state: string | null,
-                request: IncomingMessage,
-        ) => Promise<boolean> | boolean;
-        successRedirect?:
-                | string
-                | ((context: DiscordOAuthAuthorizeContext) => string | null | undefined);
-        templates?: Partial<DiscordOAuthCallbackTemplates>;
+	oauth?: OAuthConfig;
+	onAuthorize?: (
+		context: DiscordOAuthAuthorizeContext,
+	) => Promise<void> | void;
+	validateState?: (
+		state: string | null,
+		request: IncomingMessage,
+	) => Promise<boolean> | boolean;
+	successRedirect?:
+		| string
+		| ((
+				context: DiscordOAuthAuthorizeContext,
+		  ) => string | null | undefined);
+	templates?: Partial<DiscordOAuthCallbackTemplates>;
 };
 
 /** Options accepted by {@link MiniInteraction.discordOAuthVerificationPage}. */
 export type DiscordOAuthVerificationPageOptions = {
-        oauth?: OAuthConfig;
-        scopes?: string[];
-        /**
-         * Path to the HTML file to load. Relative paths resolve from {@link process.cwd}.
-         *
-         * @defaultValue "index.html"
-         */
-        htmlFile?: string;
-        /**
-         * Placeholder token (with or without the `{{ }}` wrapper) that will be replaced with the generated OAuth URL.
-         *
-         * @defaultValue "OAUTH_URL"
-         */
-        placeholder?: string;
+	oauth?: OAuthConfig;
+	scopes?: string[];
+	/**
+	 * Path to the HTML file to load. Relative paths resolve from {@link process.cwd}.
+	 *
+	 * @defaultValue "index.html"
+	 */
+	htmlFile?: string;
+	/**
+	 * Placeholder token (with or without the `{{ }}` wrapper) that will be replaced with the generated OAuth URL.
+	 *
+	 * @defaultValue "OAUTH_URL"
+	 */
+	placeholder?: string;
 };
 
 /**
  * Minimal interface describing a function capable of verifying Discord interaction signatures.
  */
 type VerifyKeyFunction = (
-        message: string | Uint8Array,
+	message: string | Uint8Array,
 	signature: string,
 	timestamp: string,
 	publicKey: string,
@@ -273,41 +291,46 @@ type VerifyKeyFunction = (
  */
 export class MiniInteraction {
 	public readonly applicationId: string;
-        public readonly publicKey: string;
-        private readonly fetchImpl: typeof fetch;
-        private readonly verifyKeyImpl: VerifyKeyFunction;
-        private readonly commandsDirectory: string | null;
-        private readonly componentsDirectory: string | null;
-        public readonly utilsDirectory: string | null;
-        private readonly commands = new Map<string, RegisteredMiniInteractionCommand>();
-        private readonly componentHandlers = new Map<
-                string,
-                MiniInteractionComponentHandler
-        >();
-        private readonly modalHandlers = new Map<
-                string,
-                MiniInteractionModalHandler
-        >();
-        private readonly htmlTemplateCache = new Map<string, string>();
+	public readonly publicKey: string;
+	private readonly fetchImpl: typeof fetch;
+	private readonly verifyKeyImpl: VerifyKeyFunction;
+	private readonly commandsDirectory: string | null;
+	private readonly componentsDirectory: string | null;
+	public readonly utilsDirectory: string | null;
+	private readonly timeoutConfig: Required<InteractionTimeoutConfig>;
+	private readonly commands = new Map<
+		string,
+		RegisteredMiniInteractionCommand
+	>();
+	private readonly componentHandlers = new Map<
+		string,
+		MiniInteractionComponentHandler
+	>();
+	private readonly modalHandlers = new Map<
+		string,
+		MiniInteractionModalHandler
+	>();
+	private readonly htmlTemplateCache = new Map<string, string>();
 	private commandsLoaded = false;
-        private loadCommandsPromise: Promise<void> | null = null;
-        private componentsLoaded = false;
-        private loadComponentsPromise: Promise<void> | null = null;
-        private registerCommandsPromise: Promise<unknown> | null = null;
-        private registerCommandsSignature: string | null = null;
+	private loadCommandsPromise: Promise<void> | null = null;
+	private componentsLoaded = false;
+	private loadComponentsPromise: Promise<void> | null = null;
+	private registerCommandsPromise: Promise<unknown> | null = null;
+	private registerCommandsSignature: string | null = null;
 
 	/**
 	 * Creates a new MiniInteraction client with optional command auto-loading and custom runtime hooks.
 	 */
-                constructor({
-                        applicationId,
-                        publicKey,
-                        commandsDirectory,
-                        componentsDirectory,
-                        utilsDirectory,
-                        fetchImplementation,
-                        verifyKeyImplementation,
-                }: MiniInteractionOptions) {
+	constructor({
+		applicationId,
+		publicKey,
+		commandsDirectory,
+		componentsDirectory,
+		utilsDirectory,
+		fetchImplementation,
+		verifyKeyImplementation,
+		timeoutConfig,
+	}: MiniInteractionOptions) {
 		if (!applicationId) {
 			throw new Error("[MiniInteraction] applicationId is required");
 		}
@@ -327,73 +350,87 @@ export class MiniInteraction {
 		this.publicKey = publicKey;
 		this.fetchImpl = fetchImpl;
 		this.verifyKeyImpl = verifyKeyImplementation ?? verifyKey;
-                this.commandsDirectory =
-                        commandsDirectory === false
-                                ? null
-                                : this.resolveCommandsDirectory(commandsDirectory);
-                this.componentsDirectory =
-                        componentsDirectory === false
-                                ? null
-                                : this.resolveComponentsDirectory(componentsDirectory);
-                this.utilsDirectory =
-                        utilsDirectory === false
-                                ? null
-                                : this.resolveUtilsDirectory(utilsDirectory);
-        }
+		this.commandsDirectory =
+			commandsDirectory === false
+				? null
+				: this.resolveCommandsDirectory(commandsDirectory);
+		this.componentsDirectory =
+			componentsDirectory === false
+				? null
+				: this.resolveComponentsDirectory(componentsDirectory);
+		this.utilsDirectory =
+			utilsDirectory === false
+				? null
+				: this.resolveUtilsDirectory(utilsDirectory);
+		this.timeoutConfig = {
+			initialResponseTimeout: 2800, // Leave 200ms buffer before Discord's 3s limit
+			enableTimeoutWarnings: true,
+			autoDeferSlowOperations: true,
+			...timeoutConfig,
+		};
+	}
 
-        private normalizeCommandData(data: MiniInteractionCommand["data"]): CommandDataPayload {
-                if (typeof data === "object" && data !== null) {
-                        const toJSON = (data as { toJSON?: unknown }).toJSON;
-                        if (typeof toJSON === "function") {
-                                return toJSON.call(data) as CommandDataPayload;
-                        }
-                }
+	private normalizeCommandData(
+		data: MiniInteractionCommand["data"],
+	): CommandDataPayload {
+		if (typeof data === "object" && data !== null) {
+			const toJSON = (data as { toJSON?: unknown }).toJSON;
+			if (typeof toJSON === "function") {
+				return toJSON.call(data) as CommandDataPayload;
+			}
+		}
 
-                return data as CommandDataPayload;
-        }
+		return data as CommandDataPayload;
+	}
 
-        private registerCommand(command: MiniInteractionCommand): void {
-                const normalizedData = this.normalizeCommandData(command.data);
-                const commandName = normalizedData?.name;
-                if (!commandName) {
-                        throw new Error("[MiniInteraction] command.data.name is required");
-                }
+	private registerCommand(command: MiniInteractionCommand): void {
+		const normalizedData = this.normalizeCommandData(command.data);
+		const commandName = normalizedData?.name;
+		if (!commandName) {
+			throw new Error("[MiniInteraction] command.data.name is required");
+		}
 
-                if (this.commands.has(commandName)) {
-                        console.warn(
-                                `[MiniInteraction] Command "${commandName}" already exists and will be overwritten.`,
-                        );
-                }
+		if (this.commands.has(commandName)) {
+			console.warn(
+				`[MiniInteraction] Command "${commandName}" already exists and will be overwritten.`,
+			);
+		}
 
-                const normalizedCommand: RegisteredMiniInteractionCommand = {
-                        ...command,
-                        data: normalizedData,
-                };
+		const normalizedCommand: RegisteredMiniInteractionCommand = {
+			...command,
+			data: normalizedData,
+		};
 
-                this.commands.set(commandName, normalizedCommand);
+		this.commands.set(commandName, normalizedCommand);
 
-                if (normalizedCommand.components && Array.isArray(normalizedCommand.components)) {
-                        for (const component of normalizedCommand.components) {
-                                this.useComponent(component);
-                        }
-                }
+		if (
+			normalizedCommand.components &&
+			Array.isArray(normalizedCommand.components)
+		) {
+			for (const component of normalizedCommand.components) {
+				this.useComponent(component);
+			}
+		}
 
-                if (normalizedCommand.modals && Array.isArray(normalizedCommand.modals)) {
-                        for (const modal of normalizedCommand.modals) {
-                                this.useModal(modal);
-                        }
-                }
-        }
+		if (
+			normalizedCommand.modals &&
+			Array.isArray(normalizedCommand.modals)
+		) {
+			for (const modal of normalizedCommand.modals) {
+				this.useModal(modal);
+			}
+		}
+	}
 
-        /**
-         * Registers a single command handler with the client.
-         *
-         * @param command - The command definition to register.
-         */
-        useCommand(command: MiniInteractionCommand): this {
-                this.registerCommand(command);
-                return this;
-        }
+	/**
+	 * Registers a single command handler with the client.
+	 *
+	 * @param command - The command definition to register.
+	 */
+	useCommand(command: MiniInteractionCommand): this {
+		this.registerCommand(command);
+		return this;
+	}
 
 	/**
 	 * Registers multiple command handlers with the client.
@@ -579,26 +616,26 @@ export class MiniInteraction {
 			return this;
 		}
 
-                for (const file of files) {
-                        const command = await this.importCommandModule(file);
-                        if (!command) {
-                                continue;
-                        }
+		for (const file of files) {
+			const command = await this.importCommandModule(file);
+			if (!command) {
+				continue;
+			}
 
-                        this.registerCommand(command);
-                }
+			this.registerCommand(command);
+		}
 
 		this.commandsLoaded = true;
 
 		return this;
 	}
 
-        /**
-         * Lists the raw command data payloads for registration with Discord.
-         */
-        listCommandData(): CommandDataPayload[] {
-                return Array.from(this.commands.values(), (command) => command.data);
-        }
+	/**
+	 * Lists the raw command data payloads for registration with Discord.
+	 */
+	listCommandData(): CommandDataPayload[] {
+		return Array.from(this.commands.values(), (command) => command.data);
+	}
 
 	/**
 	 * Registers commands with Discord's REST API.
@@ -606,82 +643,83 @@ export class MiniInteraction {
 	 * @param botToken - The bot token authorising the registration request.
 	 * @param commands - Optional command list to register instead of auto-loaded commands.
 	 */
-        async registerCommands(
-                botToken: string,
-                commands?: CommandDataPayload[],
-        ): Promise<unknown> {
-                if (!botToken) {
-                        throw new Error("[MiniInteraction] botToken is required");
-                }
+	async registerCommands(
+		botToken: string,
+		commands?: CommandDataPayload[],
+	): Promise<unknown> {
+		if (!botToken) {
+			throw new Error("[MiniInteraction] botToken is required");
+		}
 
-                let resolvedCommands = commands;
-                if (!resolvedCommands || resolvedCommands.length === 0) {
-                        await this.ensureCommandsLoaded();
-                        resolvedCommands = this.listCommandData();
-                }
+		let resolvedCommands = commands;
+		if (!resolvedCommands || resolvedCommands.length === 0) {
+			await this.ensureCommandsLoaded();
+			resolvedCommands = this.listCommandData();
+		}
 
-                if (!Array.isArray(resolvedCommands) || resolvedCommands.length === 0) {
-                        throw new Error(
-                                "[MiniInteraction] commands must be a non-empty array payload",
-                        );
-                }
+		if (!Array.isArray(resolvedCommands) || resolvedCommands.length === 0) {
+			throw new Error(
+				"[MiniInteraction] commands must be a non-empty array payload",
+			);
+		}
 
-                const signature = JSON.stringify(resolvedCommands);
-                if (this.registerCommandsPromise) {
-                        if (this.registerCommandsSignature === signature) {
-                                console.warn(
-                                        "[MiniInteraction] Command registration already in progress. Reusing the in-flight request.",
-                                );
-                                return this.registerCommandsPromise;
-                        }
+		const signature = JSON.stringify(resolvedCommands);
+		if (this.registerCommandsPromise) {
+			if (this.registerCommandsSignature === signature) {
+				console.warn(
+					"[MiniInteraction] Command registration already in progress. Reusing the in-flight request.",
+				);
+				return this.registerCommandsPromise;
+			}
 
-                        console.warn(
-                                "[MiniInteraction] Command registration already in progress. Waiting for it to finish before continuing.",
-                        );
-                        await this.registerCommandsPromise.catch(() => undefined);
-                }
+			console.warn(
+				"[MiniInteraction] Command registration already in progress. Waiting for it to finish before continuing.",
+			);
+			await this.registerCommandsPromise.catch(() => undefined);
+		}
 
-                const url = `${DISCORD_BASE_URL}/applications/${this.applicationId}/commands`;
+		const url = `${DISCORD_BASE_URL}/applications/${this.applicationId}/commands`;
 
-                const requestPromise = (async () => {
-                        try {
-                                const response = await this.fetchImpl(url, {
-                                        method: "PUT",
-                                        headers: {
-                                                Authorization: `Bot ${botToken}`,
-                                                "Content-Type": "application/json",
-                                        },
-                                        body: JSON.stringify(resolvedCommands),
-                                });
+		const requestPromise = (async () => {
+			try {
+				const response = await this.fetchImpl(url, {
+					method: "PUT",
+					headers: {
+						Authorization: `Bot ${botToken}`,
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify(resolvedCommands),
+				});
 
-                                if (!response.ok) {
-                                        const errorBody = await response.text();
-                                        throw new Error(
-                                                `[MiniInteraction] Failed to register commands: [${response.status}] ${errorBody}`,
-                                        );
-                                }
+				if (!response.ok) {
+					const errorBody = await response.text();
+					throw new Error(
+						`[MiniInteraction] Failed to register commands: [${response.status}] ${errorBody}`,
+					);
+				}
 
-                                return response.json();
-                        } catch (error) {
-                                const message = error instanceof Error ? error.message : String(error);
-                                if (message.startsWith("[MiniInteraction]")) {
-                                        throw error;
-                                }
+				return response.json();
+			} catch (error) {
+				const message =
+					error instanceof Error ? error.message : String(error);
+				if (message.startsWith("[MiniInteraction]")) {
+					throw error;
+				}
 
-                                throw new Error(
-                                        `[MiniInteraction] Failed to register commands: ${message}`,
-                                );
-                        }
-                })();
+				throw new Error(
+					`[MiniInteraction] Failed to register commands: ${message}`,
+				);
+			}
+		})();
 
-                this.registerCommandsSignature = signature;
-                this.registerCommandsPromise = requestPromise.finally(() => {
-                        this.registerCommandsPromise = null;
-                        this.registerCommandsSignature = null;
-                });
+		this.registerCommandsSignature = signature;
+		this.registerCommandsPromise = requestPromise.finally(() => {
+			this.registerCommandsPromise = null;
+			this.registerCommandsSignature = null;
+		});
 
-                return this.registerCommandsPromise;
-        }
+		return this.registerCommandsPromise;
+	}
 
 	/**
 	 * Registers role connection metadata with Discord's REST API.
@@ -732,6 +770,7 @@ export class MiniInteraction {
 	async handleRequest(
 		request: MiniInteractionRequest,
 	): Promise<MiniInteractionHandlerResult> {
+		const requestStartTime = Date.now();
 		const { body, signature, timestamp } = request;
 
 		if (!signature || !timestamp) {
@@ -791,6 +830,22 @@ export class MiniInteraction {
 		if (interaction.type === InteractionType.ModalSubmit) {
 			return this.handleModalSubmit(
 				interaction as APIModalSubmitInteraction,
+			);
+		}
+
+		// Check total processing time
+		const totalProcessingTime = Date.now() - requestStartTime;
+		if (
+			this.timeoutConfig.enableTimeoutWarnings &&
+			totalProcessingTime >
+				this.timeoutConfig.initialResponseTimeout * 0.9
+		) {
+			console.warn(
+				`[MiniInteraction] WARNING: Interaction processing took ${totalProcessingTime}ms ` +
+					`(${Math.round(
+						(totalProcessingTime / 3000) * 100,
+					)}% of Discord's 3-second limit). ` +
+					`Consider optimizing or using deferReply() for slow operations.`,
 			);
 		}
 
@@ -890,8 +945,7 @@ export class MiniInteraction {
 	discordOAuthVerificationPage(
 		options: DiscordOAuthVerificationPageOptions = {},
 	): MiniInteractionNodeHandler {
-		const scopes =
-			options.scopes ?? ["identify", "role_connections.write"];
+		const scopes = options.scopes ?? ["identify", "role_connections.write"];
 		const htmlFile = options.htmlFile ?? "index.html";
 		const placeholderKey = this.normalizeTemplateKey(
 			options.placeholder ?? "OAUTH_URL",
@@ -917,13 +971,9 @@ export class MiniInteraction {
 					rawKeys.add(rawVariant);
 				}
 
-				const html = this.renderHtmlTemplate(
-					template,
-					values,
-					{
-						rawKeys,
-					},
-				);
+				const html = this.renderHtmlTemplate(template, values, {
+					rawKeys,
+				});
 
 				sendHtml(response, html);
 			} catch (error) {
@@ -931,11 +981,7 @@ export class MiniInteraction {
 					"[MiniInteraction] Failed to render OAuth verification page:",
 					error,
 				);
-				sendHtml(
-					response,
-					DEFAULT_VERIFICATION_ERROR_HTML,
-					500,
-				);
+				sendHtml(response, DEFAULT_VERIFICATION_ERROR_HTML, 500);
 			}
 		};
 	}
@@ -946,108 +992,112 @@ export class MiniInteraction {
 	 * The following placeholders are available in the HTML file:
 	 * - `{{username}}`, `{{discriminator}}`, `{{user_id}}`, `{{user_tag}}`
 	 * - `{{access_token}}`, `{{refresh_token}}`, `{{token_type}}`, `{{scope}}`, `{{expires_at}}`
-         * - `{{state}}`
-         */
-        connectedOAuthPage(
-                filePath: string,
-        ): DiscordOAuthCallbackTemplates["success"] {
-                const template = this.loadHtmlTemplate(filePath);
+	 * - `{{state}}`
+	 */
+	connectedOAuthPage(
+		filePath: string,
+	): DiscordOAuthCallbackTemplates["success"] {
+		const template = this.loadHtmlTemplate(filePath);
 
-                return ({ user, tokens, state }) => {
-                        const discriminator = user.discriminator;
-                        const userTag =
-                                discriminator && discriminator !== "0"
-                                        ? `${user.username}#${discriminator}`
-                                        : user.username;
+		return ({ user, tokens, state }) => {
+			const discriminator = user.discriminator;
+			const userTag =
+				discriminator && discriminator !== "0"
+					? `${user.username}#${discriminator}`
+					: user.username;
 
-                        return this.renderHtmlTemplate(template, {
-                                username: user.username,
-                                discriminator,
-                                user_id: user.id,
-                                user_tag: userTag,
-                                access_token: tokens.access_token,
-                                refresh_token: tokens.refresh_token,
-                                token_type: tokens.token_type,
-                                scope: tokens.scope,
-                                expires_at: tokens.expires_at.toString(),
-                                state,
-                        });
-                };
-        }
+			return this.renderHtmlTemplate(template, {
+				username: user.username,
+				discriminator,
+				user_id: user.id,
+				user_tag: userTag,
+				access_token: tokens.access_token,
+				refresh_token: tokens.refresh_token,
+				token_type: tokens.token_type,
+				scope: tokens.scope,
+				expires_at: tokens.expires_at.toString(),
+				state,
+			});
+		};
+	}
 
-        /**
-         * Loads an HTML file and returns an error template that can be reused for all failure cases.
-         *
-         * The following placeholders are available in the HTML file:
-         * - `{{error}}`
-         * - `{{state}}`
-         */
-        failedOAuthPage(
-                filePath: string,
-        ): ((context: DiscordOAuthErrorTemplateContext) => string) &
-                ((context: DiscordOAuthStateTemplateContext) => string) {
-                const template = this.loadHtmlTemplate(filePath);
+	/**
+	 * Loads an HTML file and returns an error template that can be reused for all failure cases.
+	 *
+	 * The following placeholders are available in the HTML file:
+	 * - `{{error}}`
+	 * - `{{state}}`
+	 */
+	failedOAuthPage(
+		filePath: string,
+	): ((context: DiscordOAuthErrorTemplateContext) => string) &
+		((context: DiscordOAuthStateTemplateContext) => string) {
+		const template = this.loadHtmlTemplate(filePath);
 
-                const renderer = (context: {
-                        error?: string | null;
-                        state: string | null;
-                }) =>
-                        this.renderHtmlTemplate(template, {
-                                error: context.error,
-                                state: context.state,
-                        });
+		const renderer = (context: {
+			error?: string | null;
+			state: string | null;
+		}) =>
+			this.renderHtmlTemplate(template, {
+				error: context.error,
+				state: context.state,
+			});
 
-                return renderer as unknown as ((
-                        context: DiscordOAuthErrorTemplateContext,
-                ) => string) & ((context: DiscordOAuthStateTemplateContext) => string);
-        }
+		return renderer as unknown as ((
+			context: DiscordOAuthErrorTemplateContext,
+		) => string) &
+			((context: DiscordOAuthStateTemplateContext) => string);
+	}
 
-        /**
-         * Resolves an HTML template from disk and caches the result for reuse.
-         */
-        private loadHtmlTemplate(filePath: string): string {
-                const resolvedPath = path.isAbsolute(filePath)
-                        ? filePath
-                        : path.join(process.cwd(), filePath);
+	/**
+	 * Resolves an HTML template from disk and caches the result for reuse.
+	 */
+	private loadHtmlTemplate(filePath: string): string {
+		const resolvedPath = path.isAbsolute(filePath)
+			? filePath
+			: path.join(process.cwd(), filePath);
 
-                const cached = this.htmlTemplateCache.get(resolvedPath);
-                if (cached) {
-                        return cached;
-                }
+		const cached = this.htmlTemplateCache.get(resolvedPath);
+		if (cached) {
+			return cached;
+		}
 
-                if (!existsSync(resolvedPath)) {
-                        throw new Error(
-                                `[MiniInteraction] HTML template not found: ${resolvedPath}`,
-                        );
-                }
+		if (!existsSync(resolvedPath)) {
+			throw new Error(
+				`[MiniInteraction] HTML template not found: ${resolvedPath}`,
+			);
+		}
 
-                const fileContents = readFileSync(resolvedPath, "utf8");
-                this.htmlTemplateCache.set(resolvedPath, fileContents);
-                return fileContents;
-        }
+		const fileContents = readFileSync(resolvedPath, "utf8");
+		this.htmlTemplateCache.set(resolvedPath, fileContents);
+		return fileContents;
+	}
 
-        /**
-         * Replaces placeholder tokens in a template with escaped HTML values.
+	/**
+	 * Replaces placeholder tokens in a template with escaped HTML values.
 	 */
 	private renderHtmlTemplate(
 		template: string,
 		values: Record<string, string | null | undefined>,
 		options?: HtmlTemplateRenderOptions,
 	): string {
-                const rawKeys =
-                        options?.rawKeys instanceof Set
-                                ? options.rawKeys
-                                : new Set(options?.rawKeys ?? []);
+		const rawKeys =
+			options?.rawKeys instanceof Set
+				? options.rawKeys
+				: new Set(options?.rawKeys ?? []);
 
-		return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (match, key: string) => {
-			const value = values[key];
-			if (value === undefined || value === null) {
-				return "";
-			}
+		return template.replace(
+			/\{\{\s*(\w+)\s*\}\}/g,
+			(match, key: string) => {
+				const value = values[key];
+				if (value === undefined || value === null) {
+					return "";
+				}
 
-			const stringValue = String(value);
-			return rawKeys.has(key) ? stringValue : escapeHtml(stringValue);
-		});
+				const stringValue = String(value);
+				return rawKeys.has(key) ? stringValue : escapeHtml(stringValue);
+			},
+		);
 	}
 
 	/**
@@ -1067,140 +1117,146 @@ export class MiniInteraction {
 		return trimmed || "OAUTH_URL";
 	}
 
-        /**
-         * Creates a minimal Discord OAuth callback handler that renders helpful HTML responses.
-         *
-         * This helper keeps the user-side implementation tiny while still exposing hooks for
-         * storing metadata or validating the OAuth state value.
-         */
-        discordOAuthCallback(options: DiscordOAuthCallbackOptions): MiniInteractionNodeHandler {
-                const templates: DiscordOAuthCallbackTemplates = {
-                        ...DEFAULT_DISCORD_OAUTH_TEMPLATES,
-                        ...options.templates,
-                };
+	/**
+	 * Creates a minimal Discord OAuth callback handler that renders helpful HTML responses.
+	 *
+	 * This helper keeps the user-side implementation tiny while still exposing hooks for
+	 * storing metadata or validating the OAuth state value.
+	 */
+	discordOAuthCallback(
+		options: DiscordOAuthCallbackOptions,
+	): MiniInteractionNodeHandler {
+		const templates: DiscordOAuthCallbackTemplates = {
+			...DEFAULT_DISCORD_OAUTH_TEMPLATES,
+			...options.templates,
+		};
 
-                const oauthConfig = resolveOAuthConfig(options.oauth);
+		const oauthConfig = resolveOAuthConfig(options.oauth);
 
-                return async (request, response) => {
-                        if (request.method !== "GET") {
-                                response.statusCode = 405;
-                                response.setHeader("content-type", "application/json");
-                                response.end(
-                                        JSON.stringify({
-                                                error: "[MiniInteraction] Only GET is supported",
-                                        }),
-                                );
-                                return;
-                        }
+		return async (request, response) => {
+			if (request.method !== "GET") {
+				response.statusCode = 405;
+				response.setHeader("content-type", "application/json");
+				response.end(
+					JSON.stringify({
+						error: "[MiniInteraction] Only GET is supported",
+					}),
+				);
+				return;
+			}
 
-                        let state: string | null = null;
+			let state: string | null = null;
 
-                        try {
-                                const host = request.headers.host ?? "localhost";
-                                const url = new URL(request.url ?? "", `http://${host}`);
-                                const code = url.searchParams.get("code");
-                                state = url.searchParams.get("state");
-                                const error = url.searchParams.get("error");
+			try {
+				const host = request.headers.host ?? "localhost";
+				const url = new URL(request.url ?? "", `http://${host}`);
+				const code = url.searchParams.get("code");
+				state = url.searchParams.get("state");
+				const error = url.searchParams.get("error");
 
-                                if (error) {
-                                        sendHtml(
-                                                response,
-                                                templates.oauthError({
-                                                        error,
-                                                        state,
-                                                }),
-                                                400,
-                                        );
-                                        return;
-                                }
+				if (error) {
+					sendHtml(
+						response,
+						templates.oauthError({
+							error,
+							state,
+						}),
+						400,
+					);
+					return;
+				}
 
-                                if (!code) {
-                                        sendHtml(
-                                                response,
-                                                templates.missingCode({
-                                                        state,
-                                                }),
-                                                400,
-                                        );
-                                        return;
-                                }
+				if (!code) {
+					sendHtml(
+						response,
+						templates.missingCode({
+							state,
+						}),
+						400,
+					);
+					return;
+				}
 
-                                if (options.validateState) {
-                                        const isValid = await options.validateState(state, request);
-                                        if (!isValid) {
-                                                sendHtml(
-                                                        response,
-                                                        templates.invalidState({
-                                                                state,
-                                                        }),
-                                                        400,
-                                                );
-                                                return;
-                                        }
-                                }
+				if (options.validateState) {
+					const isValid = await options.validateState(state, request);
+					if (!isValid) {
+						sendHtml(
+							response,
+							templates.invalidState({
+								state,
+							}),
+							400,
+						);
+						return;
+					}
+				}
 
-                                const tokens = await getOAuthTokens(code, oauthConfig);
-                                const user = await getDiscordUser(tokens.access_token);
+				const tokens = await getOAuthTokens(code, oauthConfig);
+				const user = await getDiscordUser(tokens.access_token);
 
-                                const authorizeContext: DiscordOAuthAuthorizeContext = {
-                                        tokens,
-                                        user,
-                                        state,
-                                        request,
-                                        response,
-                                };
+				const authorizeContext: DiscordOAuthAuthorizeContext = {
+					tokens,
+					user,
+					state,
+					request,
+					response,
+				};
 
-                                if (options.onAuthorize) {
-                                        await options.onAuthorize(authorizeContext);
-                                        if (response.writableEnded || response.headersSent) {
-                                                return;
-                                        }
-                                }
+				if (options.onAuthorize) {
+					await options.onAuthorize(authorizeContext);
+					if (response.writableEnded || response.headersSent) {
+						return;
+					}
+				}
 
-                                if (options.successRedirect) {
-                                        const location =
-                                                typeof options.successRedirect === "function"
-                                                        ? options.successRedirect(authorizeContext)
-                                                        : options.successRedirect;
+				if (options.successRedirect) {
+					const location =
+						typeof options.successRedirect === "function"
+							? options.successRedirect(authorizeContext)
+							: options.successRedirect;
 
-                                        if (location && !response.headersSent && !response.writableEnded) {
-                                                response.statusCode = 302;
-                                                response.setHeader("location", location);
-                                                response.end();
-                                                return;
-                                        }
-                                }
+					if (
+						location &&
+						!response.headersSent &&
+						!response.writableEnded
+					) {
+						response.statusCode = 302;
+						response.setHeader("location", location);
+						response.end();
+						return;
+					}
+				}
 
-                                sendHtml(
-                                        response,
-                                        templates.success({
-                                                user,
-                                                tokens,
-                                                state,
-                                        }),
-                                );
-                        } catch (error) {
-                                console.error(
-                                        "[MiniInteraction] Discord OAuth callback failed:",
-                                        error,
-                                );
+				sendHtml(
+					response,
+					templates.success({
+						user,
+						tokens,
+						state,
+					}),
+				);
+			} catch (error) {
+				console.error(
+					"[MiniInteraction] Discord OAuth callback failed:",
+					error,
+				);
 
-                                if (!response.headersSent && !response.writableEnded) {
-                                        sendHtml(
-                                                response,
-                                                templates.serverError({
-                                                        state,
-                                                }),
-                                                500,
-                                        );
-                                }
-                        }
-                };
-        }
+				if (!response.headersSent && !response.writableEnded) {
+					sendHtml(
+						response,
+						templates.serverError({
+							state,
+						}),
+						500,
+					);
+				}
+			}
+		};
+	}
 
-        /**
-         * Creates a Fetch API compatible handler for runtimes like Workers or Deno.
-         */
+	/**
+	 * Creates a Fetch API compatible handler for runtimes like Workers or Deno.
+	 */
 	createFetchHandler(): MiniInteractionFetchHandler {
 		return async (request) => {
 			if (request.method !== "POST") {
@@ -1264,9 +1320,9 @@ export class MiniInteraction {
 	/**
 	 * Recursively collects all command module file paths from the target directory.
 	 */
-        private async collectModuleFiles(directory: string): Promise<string[]> {
-                const entries = await readdir(directory, { withFileTypes: true });
-                const files: string[] = [];
+	private async collectModuleFiles(directory: string): Promise<string[]> {
+		const entries = await readdir(directory, { withFileTypes: true });
+		const files: string[] = [];
 
 		for (const entry of entries) {
 			if (entry.name.startsWith(".")) {
@@ -1353,29 +1409,29 @@ export class MiniInteraction {
 				return null;
 			}
 
-                        const { data, handler, components, modals } =
-                                candidate as MiniInteractionCommand;
-                        const normalizedData = this.normalizeCommandData(data);
+			const { data, handler, components, modals } =
+				candidate as MiniInteractionCommand;
+			const normalizedData = this.normalizeCommandData(data);
 
-                        if (!normalizedData || typeof normalizedData.name !== "string") {
-                                console.warn(
-                                        `[MiniInteraction] Command module "${absolutePath}" is missing "data.name". Skipping.`,
-                                );
-                                return null;
-                        }
+			if (!normalizedData || typeof normalizedData.name !== "string") {
+				console.warn(
+					`[MiniInteraction] Command module "${absolutePath}" is missing "data.name". Skipping.`,
+				);
+				return null;
+			}
 
 			if (typeof handler !== "function") {
 				console.warn(
 					`[MiniInteraction] Command module "${absolutePath}" is missing a "handler" function. Skipping.`,
-                                );
-                                return null;
-                        }
+				);
+				return null;
+			}
 
-                        return { data: normalizedData, handler, components, modals };
-                } catch (error) {
-                        console.error(
-                                `[MiniInteraction] Failed to load command module "${absolutePath}":`,
-                                error,
+			return { data: normalizedData, handler, components, modals };
+		} catch (error) {
+			console.error(
+				`[MiniInteraction] Failed to load command module "${absolutePath}":`,
+				error,
 			);
 			return null;
 		}
@@ -1557,16 +1613,16 @@ export class MiniInteraction {
 	/**
 	 * Resolves the absolute components directory path from configuration.
 	 */
-        private resolveComponentsDirectory(componentsDirectory?: string): string {
-                return this.resolveDirectory("components", componentsDirectory);
-        }
+	private resolveComponentsDirectory(componentsDirectory?: string): string {
+		return this.resolveDirectory("components", componentsDirectory);
+	}
 
-        /**
-         * Resolves the absolute utilities directory path from configuration.
-         */
-        private resolveUtilsDirectory(utilsDirectory?: string): string {
-                return this.resolveDirectory("utils", utilsDirectory);
-        }
+	/**
+	 * Resolves the absolute utilities directory path from configuration.
+	 */
+	private resolveUtilsDirectory(utilsDirectory?: string): string {
+		return this.resolveDirectory("utils", utilsDirectory);
+	}
 
 	/**
 	 * Resolves a directory relative to the project "src" or "dist" folders with optional overrides.
@@ -1686,32 +1742,49 @@ export class MiniInteraction {
 		try {
 			const interactionWithHelpers =
 				createMessageComponentInteraction(interaction);
-			const response = await handler(interactionWithHelpers);
-			const resolvedResponse =
-				response ?? interactionWithHelpers.getResponse();
 
-			if (!resolvedResponse) {
-				return {
-					status: 500,
-					body: {
-						error:
-							`[MiniInteraction] Component "${customId}" did not return a response. ` +
-							"Return an APIInteractionResponse to acknowledge the interaction.",
-					},
-				};
-			}
+			// Wrap component handler with timeout
+			const timeoutWrapper = createTimeoutWrapper(
+				async () => {
+					const response = await handler(interactionWithHelpers);
+					const resolvedResponse =
+						response ?? interactionWithHelpers.getResponse();
+
+					if (!resolvedResponse) {
+						throw new Error(
+							`Component "${customId}" did not return a response. ` +
+								"Return an APIInteractionResponse to acknowledge the interaction.",
+						);
+					}
+
+					return resolvedResponse;
+				},
+				this.timeoutConfig.initialResponseTimeout,
+				`Component "${customId}"`,
+				this.timeoutConfig.enableTimeoutWarnings,
+			);
+
+			const resolvedResponse = await timeoutWrapper();
 
 			return {
 				status: 200,
 				body: resolvedResponse,
 			};
 		} catch (error) {
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
+
+			if (errorMessage.includes("Handler timeout")) {
+				console.error(
+					`[MiniInteraction] CRITICAL: Component "${customId}" timed out. ` +
+						`This will result in "didn't respond in time" errors for users.`,
+				);
+			}
+
 			return {
 				status: 500,
 				body: {
-					error: `[MiniInteraction] Component "${customId}" failed: ${String(
-						error,
-					)}`,
+					error: `[MiniInteraction] Component "${customId}" failed: ${errorMessage}`,
 				},
 			};
 		}
@@ -1748,32 +1821,49 @@ export class MiniInteraction {
 		try {
 			const interactionWithHelpers =
 				createModalSubmitInteraction(interaction);
-			const response = await handler(interactionWithHelpers);
-			const resolvedResponse =
-				response ?? interactionWithHelpers.getResponse();
 
-			if (!resolvedResponse) {
-				return {
-					status: 500,
-					body: {
-						error:
-							`[MiniInteraction] Modal "${customId}" did not return a response. ` +
-							"Return an APIInteractionResponse to acknowledge the interaction.",
-					},
-				};
-			}
+			// Wrap modal handler with timeout
+			const timeoutWrapper = createTimeoutWrapper(
+				async () => {
+					const response = await handler(interactionWithHelpers);
+					const resolvedResponse =
+						response ?? interactionWithHelpers.getResponse();
+
+					if (!resolvedResponse) {
+						throw new Error(
+							`Modal "${customId}" did not return a response. ` +
+								"Return an APIInteractionResponse to acknowledge the interaction.",
+						);
+					}
+
+					return resolvedResponse;
+				},
+				this.timeoutConfig.initialResponseTimeout,
+				`Modal "${customId}"`,
+				this.timeoutConfig.enableTimeoutWarnings,
+			);
+
+			const resolvedResponse = await timeoutWrapper();
 
 			return {
 				status: 200,
 				body: resolvedResponse,
 			};
 		} catch (error) {
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
+
+			if (errorMessage.includes("Handler timeout")) {
+				console.error(
+					`[MiniInteraction] CRITICAL: Modal "${customId}" timed out. ` +
+						`This will result in "didn't respond in time" errors for users.`,
+				);
+			}
+
 			return {
 				status: 500,
 				body: {
-					error: `[MiniInteraction] Modal "${customId}" failed: ${String(
-						error,
-					)}`,
+					error: `[MiniInteraction] Modal "${customId}" failed: ${errorMessage}`,
 				},
 			};
 		}
@@ -1787,8 +1877,8 @@ export class MiniInteraction {
 	): Promise<MiniInteractionHandlerResult> {
 		await this.ensureCommandsLoaded();
 
-                const commandInteraction =
-                        interaction as APIApplicationCommandInteraction;
+		const commandInteraction =
+			interaction as APIApplicationCommandInteraction;
 
 		if (!commandInteraction.data || !commandInteraction.data.name) {
 			return {
@@ -1816,56 +1906,84 @@ export class MiniInteraction {
 			let response: APIInteractionResponse | void;
 			let resolvedResponse: APIInteractionResponse | null = null;
 
-			// Check if it's a chat input (slash) command
-                        if (
-                                commandInteraction.data.type ===
-                                ApplicationCommandType.ChatInput
-                        ) {
-                                const interactionWithHelpers =
-                                        createCommandInteraction(
-                                                commandInteraction as APIChatInputApplicationCommandInteraction,
-                                        );
-                                response = await command.handler(interactionWithHelpers as any);
-                                resolvedResponse =
-                                        response ?? interactionWithHelpers.getResponse();
-                        } else if (
-                                commandInteraction.data.type === ApplicationCommandType.User
-                        ) {
-				// User context menu command
-				const interactionWithHelpers = createUserContextMenuInteraction(
-					commandInteraction as any,
-				);
-                                response = await command.handler(interactionWithHelpers as any);
-                                resolvedResponse =
-                                        response ?? interactionWithHelpers.getResponse();
-                        } else if (
-                                commandInteraction.data.type ===
-                                ApplicationCommandType.PrimaryEntryPoint
-                        ) {
-                                const interactionWithHelpers = createAppCommandInteraction(
-                                        commandInteraction as AppCommandInteraction,
-                                );
-                                response = await command.handler(interactionWithHelpers as any);
-                                resolvedResponse =
-                                        response ?? interactionWithHelpers.getResponse();
-                        } else if (
-                                commandInteraction.data.type === ApplicationCommandType.Message
-                        ) {
-				// Message context menu command
-				const interactionWithHelpers =
-					createMessageContextMenuInteraction(
-						commandInteraction as any,
-					);
-				response = await command.handler(interactionWithHelpers as any);
-				resolvedResponse =
-					response ?? interactionWithHelpers.getResponse();
-			} else {
-				// Unknown command type
-				response = await command.handler(commandInteraction as any);
-				resolvedResponse = response ?? null;
-			}
+			// Create a timeout wrapper for the command handler
+			const timeoutWrapper = createTimeoutWrapper(
+				async () => {
+					// Check if it's a chat input (slash) command
+					if (
+						commandInteraction.data.type ===
+						ApplicationCommandType.ChatInput
+					) {
+						const interactionWithHelpers = createCommandInteraction(
+							commandInteraction as APIChatInputApplicationCommandInteraction,
+						);
+						response = await command.handler(
+							interactionWithHelpers as any,
+						);
+						resolvedResponse =
+							response ?? interactionWithHelpers.getResponse();
+					} else if (
+						commandInteraction.data.type ===
+						ApplicationCommandType.User
+					) {
+						// User context menu command
+						const interactionWithHelpers =
+							createUserContextMenuInteraction(
+								commandInteraction as any,
+							);
+						response = await command.handler(
+							interactionWithHelpers as any,
+						);
+						resolvedResponse =
+							response ?? interactionWithHelpers.getResponse();
+					} else if (
+						commandInteraction.data.type ===
+						ApplicationCommandType.PrimaryEntryPoint
+					) {
+						const interactionWithHelpers =
+							createAppCommandInteraction(
+								commandInteraction as AppCommandInteraction,
+							);
+						response = await command.handler(
+							interactionWithHelpers as any,
+						);
+						resolvedResponse =
+							response ?? interactionWithHelpers.getResponse();
+					} else if (
+						commandInteraction.data.type ===
+						ApplicationCommandType.Message
+					) {
+						// Message context menu command
+						const interactionWithHelpers =
+							createMessageContextMenuInteraction(
+								commandInteraction as any,
+							);
+						response = await command.handler(
+							interactionWithHelpers as any,
+						);
+						resolvedResponse =
+							response ?? interactionWithHelpers.getResponse();
+					} else {
+						// Unknown command type
+						response = await command.handler(
+							commandInteraction as any,
+						);
+						resolvedResponse = response ?? null;
+					}
+				},
+				this.timeoutConfig.initialResponseTimeout,
+				`Command "${commandName}"`,
+				this.timeoutConfig.enableTimeoutWarnings,
+			);
+
+			await timeoutWrapper();
 
 			if (!resolvedResponse) {
+				console.error(
+					`[MiniInteraction] Command "${commandName}" did not return a response. ` +
+						"This indicates the handler completed but no response was generated. " +
+						"Check that deferReply(), reply(), showModal(), or a direct response is returned.",
+				);
 				return {
 					status: 500,
 					body: {
@@ -1882,12 +2000,23 @@ export class MiniInteraction {
 				body: resolvedResponse,
 			};
 		} catch (error) {
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
+
+			// Check if this was a timeout error
+			if (errorMessage.includes("Handler timeout")) {
+				console.error(
+					`[MiniInteraction] CRITICAL: Command "${commandName}" timed out before responding to Discord. ` +
+						`This will result in "didn't respond in time" errors for users. ` +
+						`Handler took longer than ${this.timeoutConfig.initialResponseTimeout}ms to complete. ` +
+						`Consider using deferReply() for operations that take more than 3 seconds.`,
+				);
+			}
+
 			return {
 				status: 500,
 				body: {
-					error: `[MiniInteraction] Command "${commandName}" failed: ${String(
-						error,
-					)}`,
+					error: `[MiniInteraction] Command "${commandName}" failed: ${errorMessage}`,
 				},
 			};
 		}
@@ -1899,14 +2028,14 @@ type HtmlTemplateRenderOptions = {
 };
 
 const DEFAULT_DISCORD_OAUTH_TEMPLATES: DiscordOAuthCallbackTemplates = {
-        success: ({ user }) => {
-                const username = escapeHtml(user.username ?? "Discord User");
-                const discriminator =
-                        user.discriminator && user.discriminator !== "0"
-                                ? `#${escapeHtml(user.discriminator)}`
-                                : "";
+	success: ({ user }) => {
+		const username = escapeHtml(user.username ?? "Discord User");
+		const discriminator =
+			user.discriminator && user.discriminator !== "0"
+				? `#${escapeHtml(user.discriminator)}`
+				: "";
 
-                return `<!DOCTYPE html>
+		return `<!DOCTYPE html>
 <html>
 <head>
         <meta charset="utf-8" />
@@ -1933,8 +2062,8 @@ const DEFAULT_DISCORD_OAUTH_TEMPLATES: DiscordOAuthCallbackTemplates = {
         </div>
 </body>
 </html>`;
-        },
-        missingCode: () => `<!DOCTYPE html>
+	},
+	missingCode: () => `<!DOCTYPE html>
 <html>
 <head>
         <meta charset="utf-8" />
@@ -1951,7 +2080,7 @@ const DEFAULT_DISCORD_OAUTH_TEMPLATES: DiscordOAuthCallbackTemplates = {
         </div>
 </body>
 </html>`,
-        oauthError: ({ error }) => `<!DOCTYPE html>
+	oauthError: ({ error }) => `<!DOCTYPE html>
 <html>
 <head>
         <meta charset="utf-8" />
@@ -1969,7 +2098,7 @@ const DEFAULT_DISCORD_OAUTH_TEMPLATES: DiscordOAuthCallbackTemplates = {
         </div>
 </body>
 </html>`,
-        invalidState: () => `<!DOCTYPE html>
+	invalidState: () => `<!DOCTYPE html>
 <html>
 <head>
         <meta charset="utf-8" />
@@ -1987,7 +2116,7 @@ const DEFAULT_DISCORD_OAUTH_TEMPLATES: DiscordOAuthCallbackTemplates = {
         </div>
 </body>
 </html>`,
-        serverError: () => `<!DOCTYPE html>
+	serverError: () => `<!DOCTYPE html>
 <html>
 <head>
         <meta charset="utf-8" />
@@ -2024,54 +2153,124 @@ const DEFAULT_VERIFICATION_ERROR_HTML = `<!DOCTYPE html>
 </body>
 </html>`;
 
-function sendHtml(response: ServerResponse, body: string, statusCode = 200): void {
-        if (response.headersSent || response.writableEnded) {
-                return;
-        }
+function sendHtml(
+	response: ServerResponse,
+	body: string,
+	statusCode = 200,
+): void {
+	if (response.headersSent || response.writableEnded) {
+		return;
+	}
 
-        response.statusCode = statusCode;
-        response.setHeader("content-type", "text/html; charset=utf-8");
-        response.end(body);
+	response.statusCode = statusCode;
+	response.setHeader("content-type", "text/html; charset=utf-8");
+	response.end(body);
 }
 
 function escapeHtml(value: string): string {
-        return value.replace(/[&<>"']/g, (character) => {
-                switch (character) {
-                        case "&":
-                                return "&amp;";
-                        case "<":
-                                return "&lt;";
-                        case ">":
-                                return "&gt;";
-                        case '"':
-                                return "&quot;";
-                        case "'":
-                                return "&#39;";
-                        default:
-                                return character;
-                }
-        });
+	return value.replace(/[&<>"']/g, (character) => {
+		switch (character) {
+			case "&":
+				return "&amp;";
+			case "<":
+				return "&lt;";
+			case ">":
+				return "&gt;";
+			case '"':
+				return "&quot;";
+			case "'":
+				return "&#39;";
+			default:
+				return character;
+		}
+	});
 }
 
 function resolveOAuthConfig(provided?: OAuthConfig): OAuthConfig {
-        if (provided) {
-                return provided;
-        }
+	if (provided) {
+		return provided;
+	}
 
-        const appId =
-                process.env.DISCORD_APPLICATION_ID ?? process.env.DISCORD_CLIENT_ID;
-        const appSecret = process.env.DISCORD_CLIENT_SECRET;
-        const redirectUri = process.env.DISCORD_REDIRECT_URI;
+	const appId =
+		process.env.DISCORD_APPLICATION_ID ?? process.env.DISCORD_CLIENT_ID;
+	const appSecret = process.env.DISCORD_CLIENT_SECRET;
+	const redirectUri = process.env.DISCORD_REDIRECT_URI;
 
-        if (!appId || !appSecret || !redirectUri) {
-                throw new Error(
-                        "[MiniInteraction] Missing OAuth configuration. Provide options.oauth or set DISCORD_APPLICATION_ID, DISCORD_CLIENT_SECRET, and DISCORD_REDIRECT_URI environment variables.",
-                );
-        }
+	if (!appId || !appSecret || !redirectUri) {
+		throw new Error(
+			"[MiniInteraction] Missing OAuth configuration. Provide options.oauth or set DISCORD_APPLICATION_ID, DISCORD_CLIENT_SECRET, and DISCORD_REDIRECT_URI environment variables.",
+		);
+	}
 
-        return {
-                appId,
-                appSecret,
-                redirectUri,
-        };
+	return {
+		appId,
+		appSecret,
+		redirectUri,
+	};
+}
+
+/**
+ * Wraps a handler function with timeout detection and error handling.
+ */
+function createTimeoutWrapper<T extends any[], R>(
+	handler: (...args: T) => Promise<R> | R,
+	timeoutMs: number,
+	handlerName: string,
+	enableWarnings: boolean = true,
+): (...args: T) => Promise<R> {
+	return async (...args: T): Promise<R> => {
+		const startTime = Date.now();
+		let timeoutId: NodeJS.Timeout | undefined;
+
+		const timeoutPromise = new Promise<never>((_, reject) => {
+			timeoutId = setTimeout(() => {
+				const elapsed = Date.now() - startTime;
+				console.error(
+					`[MiniInteraction] ${handlerName} timed out after ${elapsed}ms (limit: ${timeoutMs}ms)`,
+				);
+				reject(
+					new Error(
+						`Handler timeout: ${handlerName} exceeded ${timeoutMs}ms limit`,
+					),
+				);
+			}, timeoutMs);
+		});
+
+		try {
+			const result = await Promise.race([
+				Promise.resolve(handler(...args)),
+				timeoutPromise,
+			]);
+
+			if (timeoutId) {
+				clearTimeout(timeoutId);
+			}
+
+			const elapsed = Date.now() - startTime;
+			if (enableWarnings && elapsed > timeoutMs * 0.8) {
+				console.warn(
+					`[MiniInteraction] ${handlerName} completed in ${elapsed}ms (${Math.round(
+						(elapsed / timeoutMs) * 100,
+					)}% of timeout limit)`,
+				);
+			}
+
+			return result;
+		} catch (error) {
+			if (timeoutId) {
+				clearTimeout(timeoutId);
+			}
+
+			// Re-throw the error with additional context
+			if (
+				error instanceof Error &&
+				error.message.includes("Handler timeout")
+			) {
+				throw error;
+			}
+
+			console.error(`[MiniInteraction] ${handlerName} failed:`, error);
+			throw error;
+		}
+	};
 }
