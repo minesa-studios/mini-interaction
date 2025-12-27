@@ -549,6 +549,10 @@ export interface CommandInteraction
 			| APIModalInteractionResponseCallbackData
 			| { toJSON(): APIModalInteractionResponseCallbackData },
 	): APIModalInteractionResponse;
+	withTimeoutProtection<T>(
+		operation: () => Promise<T>,
+		deferOptions?: DeferReplyOptions,
+	): Promise<T>;
 }
 
 /**
@@ -688,6 +692,52 @@ export function createCommandInteraction(
 				type: InteractionResponseType.Modal,
 				data: resolvedData,
 			});
+		},
+
+		/**
+		 * Creates a delayed response wrapper that automatically defers if the operation takes too long.
+		 * Use this for operations that might exceed Discord's 3-second limit.
+		 *
+		 * @param operation - The async operation to perform
+		 * @param deferOptions - Options for automatic deferral
+		 */
+		async withTimeoutProtection<T>(
+			operation: () => Promise<T>,
+			deferOptions?: DeferReplyOptions,
+		): Promise<T> {
+			const startTime = Date.now();
+			let deferred = false;
+
+			// Set up a timer to auto-defer after 2.5 seconds
+			const deferTimer = setTimeout(async () => {
+				if (!deferred) {
+					console.warn(
+						"[MiniInteraction] Auto-deferring interaction due to slow operation. " +
+						"Consider using deferReply() explicitly for better user experience."
+					);
+					this.deferReply(deferOptions);
+					deferred = true;
+				}
+			}, 2500);
+
+			try {
+				const result = await operation();
+
+				clearTimeout(deferTimer);
+
+				const elapsed = Date.now() - startTime;
+				if (elapsed > 2000 && !deferred) {
+					console.warn(
+						`[MiniInteraction] Operation completed in ${elapsed}ms. ` +
+						"Consider using deferReply() for operations > 2 seconds."
+					);
+				}
+
+				return result;
+			} catch (error) {
+				clearTimeout(deferTimer);
+				throw error;
+			}
 		},
 	};
 
