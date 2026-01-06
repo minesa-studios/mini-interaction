@@ -96,8 +96,8 @@ export { SeparatorSpacingSize } from "./types/SeparatorSpacingSize.js";
 export { TextInputStyle } from "discord-api-types/v10";
 export { MiniPermFlags } from "./types/PermissionFlags.js";
 export type {
-	ComponentCommandActionRow,
-	ComponentMessageActionRow,
+	ActionRowComponent,
+	MessageActionRowComponent,
 } from "./types/ComponentTypes.js";
 export * from "./builders/index.js";
 export { MiniDataBuilder } from "./database/MiniDataBuilder.js";

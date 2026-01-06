@@ -4,7 +4,7 @@ import type {
 } from "discord-api-types/v10";
 
 /** Defines a component structure for use in ActionRow builders. */
-export type ComponentCommandActionRow = APIComponentInActionRow;
+export type ActionRowComponent = APIComponentInActionRow;
 
 /** Defines a message component structure for use in message builders. */
-export type ComponentMessageActionRow = APIComponentInMessageActionRow;
+export type MessageActionRowComponent = APIComponentInMessageActionRow;
