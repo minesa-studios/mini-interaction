@@ -1562,7 +1562,7 @@ export class MiniInteraction {
 				return null;
 			}
 
-			const { data, handler, components, modals } =
+			const { data, handler } =
 				candidate as InteractionCommand;
 			const normalizedData = this.normalizeCommandData(data);
 
@@ -1580,7 +1580,7 @@ export class MiniInteraction {
 				return null;
 			}
 
-			return { data: normalizedData, handler, components, modals };
+			return { data: normalizedData, handler };
 		} catch (error) {
 			console.error(
 				`[MiniInteraction] Failed to load command module "${absolutePath}":`,
