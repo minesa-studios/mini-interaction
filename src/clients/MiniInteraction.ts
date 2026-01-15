@@ -2065,6 +2065,8 @@ export class MiniInteraction {
 								{
 									onAck: (response) => ackResolver?.(response),
 									sendFollowUp,
+									canRespond: (id) => this.canRespond(id),
+									trackResponse: (id, token, state) => this.trackInteractionState(id, token, state),
 								}
 							);
 						response = await command.handler(

@@ -142,11 +142,16 @@ function createContextMenuInteractionHelpers(
 	const reply = (
 		data: InteractionMessageData,
 	): APIInteractionResponseChannelMessageWithSource => {
+		if (helpers?.canRespond && !helpers.canRespond(interaction.id)) {
+			throw new Error("[MiniInteraction] Interaction cannot respond: already responded or expired");
+		}
+
 		const response = createMessageResponse(
 			InteractionResponseType.ChannelMessageWithSource,
 			data,
 		);
 		hasResponded = true;
+		helpers?.trackResponse?.(interaction.id, interaction.token, 'responded');
 		helpers?.onAck?.(response);
 		return response;
 	};
@@ -166,28 +171,42 @@ function createContextMenuInteractionHelpers(
 
 	const editReply = async (
 		data?: InteractionMessageData,
-	): Promise<APIInteractionResponseUpdateMessage> => {
+	): Promise<APIInteractionResponseUpdateMessage | APIInteractionResponseChannelMessageWithSource> => {
+		if (helpers?.canRespond && !helpers.canRespond(interaction.id)) {
+			throw new Error("[MiniInteraction] Interaction cannot edit reply: expired");
+		}
+
+		// Context menu commands (User/Message) MUST use ChannelMessageWithSource (4)
+		// for their initial response if it's the first response.
 		const response = createMessageResponse(
-			InteractionResponseType.UpdateMessage,
-			data,
+			InteractionResponseType.ChannelMessageWithSource,
+			data!,
 		);
+
 		if (helpers?.sendFollowUp && (isDeferred || hasResponded)) {
 			await helpers.sendFollowUp(interaction.token, response, '@original');
 			return capturedResponse as APIInteractionResponseUpdateMessage;
 		}
+
 		hasResponded = true;
-		return response;
+		helpers?.trackResponse?.(interaction.id, interaction.token, 'responded');
+		return response as APIInteractionResponseChannelMessageWithSource;
 	};
 
 	const deferReply = (
 		options: DeferReplyOptions = {},
 	): APIInteractionResponseDeferredChannelMessageWithSource => {
+		if (helpers?.canRespond && !helpers.canRespond(interaction.id)) {
+			throw new Error("[MiniInteraction] Interaction cannot defer: already responded or expired");
+		}
+
 		const flags = normaliseMessageFlags(options.flags);
 		const response = captureResponse({
 			type: InteractionResponseType.DeferredChannelMessageWithSource,
 			data: flags ? { flags } : undefined,
 		});
 		isDeferred = true;
+		helpers?.trackResponse?.(interaction.id, interaction.token, 'deferred');
 		helpers?.onAck?.(response);
 		return response;
 	};
@@ -211,7 +230,7 @@ function createContextMenuInteractionHelpers(
 		getResponse,
 		reply,
 		followUp,
-		editReply,
+		editReply: editReply as any,
 		deferReply,
 		showModal,
 		onAck: helpers?.onAck,

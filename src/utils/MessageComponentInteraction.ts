@@ -325,6 +325,10 @@ export function createMessageComponentInteraction(
 	const reply = async (
 		data: InteractionMessageData,
 	): Promise<APIInteractionResponseChannelMessageWithSource> => {
+		if (helpers?.canRespond && !helpers.canRespond(interaction.id)) {
+			throw new Error("[MiniInteraction] Interaction cannot respond: already responded or expired");
+		}
+
 		const normalisedData = normaliseInteractionMessageData(data);
 		if (!normalisedData) {
 			throw new Error(
@@ -343,12 +347,17 @@ export function createMessageComponentInteraction(
 			helpers?.onAck?.(response);
 		}
 
+		helpers?.trackResponse?.(interaction.id, interaction.token, 'responded');
 		return response;
 	};
 
 	const deferReply = (
 		options?: DeferReplyOptions,
 	): APIInteractionResponseDeferredChannelMessageWithSource => {
+		if (helpers?.canRespond && !helpers.canRespond(interaction.id)) {
+			throw new Error("[MiniInteraction] Interaction cannot defer: already responded or expired");
+		}
+
 		const flags = normaliseMessageFlags(options?.flags);
 
 		const response: APIInteractionResponseDeferredChannelMessageWithSource =
@@ -363,6 +372,7 @@ export function createMessageComponentInteraction(
 
 		captureResponse(response);
 		isDeferred = true;
+		helpers?.trackResponse?.(interaction.id, interaction.token, 'deferred');
 		helpers?.onAck?.(response);
 		return response;
 	};
@@ -370,6 +380,10 @@ export function createMessageComponentInteraction(
 	const update = async (
 		data?: InteractionMessageData,
 	): Promise<APIInteractionResponseUpdateMessage> => {
+		if (helpers?.canRespond && !helpers.canRespond(interaction.id)) {
+			throw new Error("[MiniInteraction] Interaction cannot update: already responded or expired");
+		}
+
 		const normalisedData = normaliseInteractionMessageData(data);
 
 		const response = captureResponse(
@@ -389,14 +403,20 @@ export function createMessageComponentInteraction(
 			helpers?.onAck?.(response);
 		}
 
+		helpers?.trackResponse?.(interaction.id, interaction.token, 'responded');
 		return response;
 	};
 
 	const deferUpdate = (): APIInteractionResponseDeferredMessageUpdate => {
+		if (helpers?.canRespond && !helpers.canRespond(interaction.id)) {
+			throw new Error("[MiniInteraction] Interaction cannot defer update: already responded or expired");
+		}
+
 		const response = captureResponse({
 			type: InteractionResponseType.DeferredMessageUpdate,
 		});
 		isDeferred = true;
+		helpers?.trackResponse?.(interaction.id, interaction.token, 'deferred');
 		helpers?.onAck?.(response);
 		return response;
 	};
