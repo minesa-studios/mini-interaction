@@ -34,6 +34,11 @@ export type ModalSubmitInteraction = APIModalSubmitInteraction & {
 	 * This is automatically called by reply() if the interaction is deferred.
 	 */
 	sendFollowUp?: (token: string, response: APIInteractionResponse, messageId?: string) => Promise<void>;
+	/**
+	 * Optional state management helpers.
+	 */
+	canRespond?: (interactionId: string) => boolean;
+	trackResponse?: (interactionId: string, token: string, state: 'responded' | 'deferred') => void;
 }
 
 export const ModalSubmitInteraction = {};
@@ -50,6 +55,8 @@ export function createModalSubmitInteraction(
 	helpers?: {
 		onAck?: (response: APIInteractionResponse) => void;
 		sendFollowUp?: (token: string, response: APIInteractionResponse, messageId?: string) => Promise<void>;
+		canRespond?: (interactionId: string) => boolean;
+		trackResponse?: (interactionId: string, token: string, state: 'responded' | 'deferred') => void;
 	}
 ): ModalSubmitInteraction {
 	let capturedResponse: APIInteractionResponse | null = null;
@@ -131,5 +138,7 @@ export function createModalSubmitInteraction(
 		getResponse,
 		getTextFieldValue,
 		sendFollowUp: helpers?.sendFollowUp,
+		canRespond: helpers?.canRespond,
+		trackResponse: helpers?.trackResponse,
 	});
 }

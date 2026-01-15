@@ -815,6 +815,7 @@ export function createCommandInteraction(
 		canRespond: helpers?.canRespond,
 		trackResponse: helpers?.trackResponse,
 		onAck: helpers?.onAck,
+		sendFollowUp: helpers?.sendFollowUp,
 	};
 
 	return commandInteraction;

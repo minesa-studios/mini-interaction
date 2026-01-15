@@ -50,6 +50,8 @@ export type BaseComponentInteractionHelpers = {
 	trackTiming?: (interactionId: string, operation: string, startTime: number, success: boolean) => void;
 	onAck?: (response: APIInteractionResponse) => void;
 	sendFollowUp?: (token: string, response: APIInteractionResponse, messageId?: string) => Promise<void>;
+	canRespond?: (interactionId: string) => boolean;
+	trackResponse?: (interactionId: string, token: string, state: 'responded' | 'deferred') => void;
 };
 
 /**
@@ -75,6 +77,8 @@ export interface ButtonInteraction
 			| APIModalInteractionResponseCallbackData
 			| { toJSON(): APIModalInteractionResponseCallbackData },
 	) => APIModalInteractionResponse;
+	canRespond?: (interactionId: string) => boolean;
+	trackResponse?: (interactionId: string, token: string, state: 'responded' | 'deferred') => void;
 }
 
 export const ButtonInteraction = {};
@@ -103,6 +107,8 @@ export interface StringSelectInteraction
 			| APIModalInteractionResponseCallbackData
 			| { toJSON(): APIModalInteractionResponseCallbackData },
 	) => APIModalInteractionResponse;
+	canRespond?: (interactionId: string) => boolean;
+	trackResponse?: (interactionId: string, token: string, state: 'responded' | 'deferred') => void;
 }
 
 export const StringSelectInteraction = {};
@@ -131,6 +137,8 @@ export interface RoleSelectInteraction
 			| APIModalInteractionResponseCallbackData
 			| { toJSON(): APIModalInteractionResponseCallbackData },
 	) => APIModalInteractionResponse;
+	canRespond?: (interactionId: string) => boolean;
+	trackResponse?: (interactionId: string, token: string, state: 'responded' | 'deferred') => void;
 }
 
 export const RoleSelectInteraction = {};
@@ -159,6 +167,8 @@ export interface UserSelectInteraction
 			| APIModalInteractionResponseCallbackData
 			| { toJSON(): APIModalInteractionResponseCallbackData },
 	) => APIModalInteractionResponse;
+	canRespond?: (interactionId: string) => boolean;
+	trackResponse?: (interactionId: string, token: string, state: 'responded' | 'deferred') => void;
 }
 
 export const UserSelectInteraction = {};
@@ -187,6 +197,8 @@ export interface ChannelSelectInteraction
 			| APIModalInteractionResponseCallbackData
 			| { toJSON(): APIModalInteractionResponseCallbackData },
 	) => APIModalInteractionResponse;
+	canRespond?: (interactionId: string) => boolean;
+	trackResponse?: (interactionId: string, token: string, state: 'responded' | 'deferred') => void;
 }
 
 export const ChannelSelectInteraction = {};
@@ -215,6 +227,8 @@ export interface MentionableSelectInteraction
 			| APIModalInteractionResponseCallbackData
 			| { toJSON(): APIModalInteractionResponseCallbackData },
 	) => APIModalInteractionResponse;
+	canRespond?: (interactionId: string) => boolean;
+	trackResponse?: (interactionId: string, token: string, state: 'responded' | 'deferred') => void;
 }
 
 export const MentionableSelectInteraction = {};
@@ -247,6 +261,11 @@ export type MessageComponentInteraction = APIMessageComponentInteraction & {
 	 * This is automatically called by reply() and update() if the interaction is deferred.
 	 */
 	sendFollowUp?: (token: string, response: APIInteractionResponse, messageId?: string) => Promise<void>;
+	/**
+	 * Optional state management helpers.
+	 */
+	canRespond?: (interactionId: string) => boolean;
+	trackResponse?: (interactionId: string, token: string, state: 'responded' | 'deferred') => void;
 	/**
 	 * The selected values from a select menu interaction.
 	 * This property is only present for select menu interactions.
@@ -522,5 +541,7 @@ export function createMessageComponentInteraction(
 		getMentionables,
 		onAck: helpers?.onAck,
 		sendFollowUp: helpers?.sendFollowUp,
+		canRespond: helpers?.canRespond,
+		trackResponse: helpers?.trackResponse,
 	});
 }

@@ -1806,6 +1806,8 @@ export class MiniInteraction {
 				createMessageComponentInteraction(interaction, {
 					onAck: (response) => ackResolver?.(response),
 					sendFollowUp,
+					trackResponse: (id, token, state) => this.trackInteractionState(id, token, state),
+					canRespond: (id) => this.canRespond(id),
 				});
 
 			// Wrap component handler with timeout and acknowledgment
@@ -1815,11 +1817,8 @@ export class MiniInteraction {
 					const resolvedResponse =
 						response ?? interactionWithHelpers.getResponse();
 
-					if (!resolvedResponse) {
-						throw new Error(
-							`Component "${customId}" did not return a response. ` +
-								"Return an APIInteractionResponse to acknowledge the interaction.",
-						);
+					if (this.timeoutConfig.enableResponseDebugLogging) {
+						console.log(`[MiniInteraction] Component handler finished: "${customId}"`);
 					}
 
 					return resolvedResponse;
@@ -1834,7 +1833,7 @@ export class MiniInteraction {
 
 			return {
 				status: 200,
-				body: resolvedResponse,
+				body: resolvedResponse!,
 			};
 		} catch (error) {
 			const errorMessage =
@@ -1899,6 +1898,8 @@ export class MiniInteraction {
 				createModalSubmitInteraction(interaction, {
 					onAck: (response) => ackResolver?.(response),
 					sendFollowUp,
+					trackResponse: (id, token, state) => this.trackInteractionState(id, token, state),
+					canRespond: (id) => this.canRespond(id),
 				});
 
 			// Wrap modal handler with timeout and acknowledgment
@@ -1908,11 +1909,8 @@ export class MiniInteraction {
 					const resolvedResponse =
 						response ?? interactionWithHelpers.getResponse();
 
-					if (!resolvedResponse) {
-						throw new Error(
-							`Modal "${customId}" did not return a response. ` +
-								"Return an APIInteractionResponse to acknowledge the interaction.",
-						);
+					if (this.timeoutConfig.enableResponseDebugLogging) {
+						console.log(`[MiniInteraction] Modal handler finished: "${customId}"`);
 					}
 
 					return resolvedResponse;
@@ -1927,7 +1925,7 @@ export class MiniInteraction {
 
 			return {
 				status: 200,
-				body: resolvedResponse,
+				body: resolvedResponse!,
 			};
 		} catch (error) {
 			const errorMessage =
