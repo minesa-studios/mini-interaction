@@ -540,11 +540,11 @@ export interface CommandInteraction
 	): APIInteractionResponseChannelMessageWithSource;
 	followUp(
 		data: InteractionMessageData,
-	): APIInteractionResponseChannelMessageWithSource;
+	): Promise<APIInteractionResponseChannelMessageWithSource>;
 	edit(data?: InteractionMessageData): APIInteractionResponseUpdateMessage;
 	editReply(
 		data?: InteractionMessageData,
-	): APIInteractionResponseUpdateMessage;
+	): Promise<APIInteractionResponseUpdateMessage>;
 	deferReply(
 		options?: DeferReplyOptions,
 	): APIInteractionResponseDeferredChannelMessageWithSource;
@@ -560,7 +560,7 @@ export interface CommandInteraction
 	canRespond?(interactionId: string): boolean;
 	trackResponse?(interactionId: string, token: string, state: 'responded' | 'deferred'): void;
 	onAck?(response: APIInteractionResponse): void;
-	sendFollowUp?(token: string, response: APIInteractionResponse): void;
+	sendFollowUp?(token: string, response: APIInteractionResponse, messageId?: string): Promise<void>;
 }
 
 export const CommandInteraction = {};
@@ -579,7 +579,7 @@ export function createCommandInteraction(
 		trackResponse?: (interactionId: string, token: string, state: 'responded' | 'deferred') => void;
 		logTiming?: (interactionId: string, operation: string, startTime: number, success: boolean) => void;
 		onAck?: (response: APIInteractionResponse) => void;
-		sendFollowUp?: (token: string, response: APIInteractionResponse) => void;
+		sendFollowUp?: (token: string, response: APIInteractionResponse, messageId?: string) => Promise<void>;
 	}
 ): CommandInteraction {
 	const options = new CommandInteractionOptionResolver(
@@ -588,6 +588,8 @@ export function createCommandInteraction(
 	);
 
 	let capturedResponse: APIInteractionResponse | null = null;
+	let isDeferred = false;
+	let hasResponded = false;
 
 	/**
 	 * Stores the most recent response helper payload for later retrieval.
@@ -681,20 +683,22 @@ export function createCommandInteraction(
 
 			// Track response
 			this.trackResponse?.(this.id, this.token, 'responded');
+			hasResponded = true;
 
 			// Notify acknowledgment
 			this.onAck?.(response);
 
 			return response;
 		},
-		followUp(data) {
+		async followUp(data) {
 			const response = createMessageResponse(
 				InteractionResponseType.ChannelMessageWithSource,
 				data,
 			);
 			
 			if (this.sendFollowUp) {
-				this.sendFollowUp(this.token, response);
+				// Empty string for messageId means a new follow-up (POST)
+				await this.sendFollowUp(this.token, response, '');
 			}
 
 			return response;
@@ -705,10 +709,10 @@ export function createCommandInteraction(
 				data,
 			);
 		},
-		editReply(data) {
+		async editReply(data) {
 			// Validate interaction can respond
 			if (!this.canRespond?.(this.id)) {
-				throw new Error('Interaction cannot edit reply: already responded, expired, or not deferred');
+				throw new Error('Interaction cannot edit reply: expired');
 			}
 
 			const response = createMessageResponse(
@@ -717,12 +721,13 @@ export function createCommandInteraction(
 			);
 
 			// If it's already deferred or responded, we MUST use a webhook
-			if (this.sendFollowUp) {
-				this.sendFollowUp(this.token, response);
+			if (this.sendFollowUp && (isDeferred || hasResponded)) {
+				await this.sendFollowUp(this.token, response, '@original');
 			}
 
 			// Track response
 			this.trackResponse?.(this.id, this.token, 'responded');
+			hasResponded = true;
 
 			return response;
 		},
@@ -740,6 +745,7 @@ export function createCommandInteraction(
 
 			// Track deferred state
 			this.trackResponse?.(this.id, this.token, 'deferred');
+			isDeferred = true;
 
 			// Notify acknowledgment
 			this.onAck?.(response);

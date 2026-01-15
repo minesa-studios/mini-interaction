@@ -116,6 +116,14 @@ export function normaliseInteractionMessageData(
 		responseData.flags = normaliseMessageFlags(data.flags);
 	}
 
+	// Automatically handle IsComponentsV2 flag if Components V2 are detected
+	if (responseData.components && Array.isArray(responseData.components)) {
+		if (containsComponentsV2(responseData.components)) {
+			const currentFlags = responseData.flags ?? 0;
+			responseData.flags = (currentFlags | (0x1 << 12)) as MessageFlags; // 0x1 << 12 is IsComponentsV2
+		}
+	}
+
 	return responseData;
 }
 

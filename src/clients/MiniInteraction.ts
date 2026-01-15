@@ -402,11 +402,6 @@ export class MiniInteraction {
 			return false;
 		}
 
-		// Check if already responded
-		if (state.state === 'responded') {
-			return false;
-		}
-
 		return true;
 	}
 
@@ -1804,8 +1799,8 @@ export class MiniInteraction {
 			});
 
 			// Helper to send follow-up responses via webhooks
-			const sendFollowUp = (token: string, data: APIInteractionResponse) =>
-				this.sendFollowUp(token, data);
+			const sendFollowUp = (token: string, data: APIInteractionResponse, messageId: string = '@original') =>
+				this.sendFollowUp(token, data, messageId);
 
 			const interactionWithHelpers =
 				createMessageComponentInteraction(interaction, {
@@ -1897,8 +1892,8 @@ export class MiniInteraction {
 			});
 
 			// Helper to send follow-up responses via webhooks
-			const sendFollowUp = (token: string, data: APIInteractionResponse) => 
-				this.sendFollowUp(token, data);
+			const sendFollowUp = (token: string, data: APIInteractionResponse, messageId: string = '@original') => 
+				this.sendFollowUp(token, data, messageId);
 
 			const interactionWithHelpers =
 				createModalSubmitInteraction(interaction, {
@@ -1998,8 +1993,8 @@ export class MiniInteraction {
 			});
 
 			// Helper to send follow-up responses via webhooks
-			const sendFollowUp = (token: string, data: APIInteractionResponse) =>
-				this.sendFollowUp(token, data);
+			const sendFollowUp = (token: string, data: APIInteractionResponse, messageId: string = '@original') => 
+				this.sendFollowUp(token, data, messageId);
 
 			// Create a timeout wrapper for the command handler
 			const timeoutWrapper = createTimeoutWrapper(
@@ -2142,8 +2137,12 @@ export class MiniInteraction {
 	private async sendFollowUp(
 		token: string,
 		response: APIInteractionResponse,
+		messageId: string = "@original",
 	): Promise<void> {
-		const url = `${DISCORD_BASE_URL}/webhooks/${this.applicationId}/${token}/messages/@original`;
+		const isEdit = messageId !== "";
+		const url = isEdit
+			? `${DISCORD_BASE_URL}/webhooks/${this.applicationId}/${token}/messages/${messageId}`
+			: `${DISCORD_BASE_URL}/webhooks/${this.applicationId}/${token}`;
 		
 		// Only send follow-up if there is data to send
 		if (!('data' in response) || !response.data) {
@@ -2152,7 +2151,7 @@ export class MiniInteraction {
 
 		try {
 			const fetchResponse = await this.fetchImpl(url, {
-				method: "PATCH",
+				method: isEdit ? "PATCH" : "POST",
 				headers: {
 					"Content-Type": "application/json",
 				},

@@ -21,7 +21,7 @@ export type ModalSubmitInteraction = APIModalSubmitInteraction & {
 	getResponse: () => APIInteractionResponse | null;
 	reply: (
 		data: InteractionMessageData,
-	) => APIInteractionResponseChannelMessageWithSource;
+	) => Promise<APIInteractionResponseChannelMessageWithSource>;
 	deferReply: (
 		options?: DeferReplyOptions,
 	) => APIInteractionResponseDeferredChannelMessageWithSource;
@@ -33,7 +33,7 @@ export type ModalSubmitInteraction = APIModalSubmitInteraction & {
 	 * Finalise the interaction response via a webhook follow-up.
 	 * This is automatically called by reply() if the interaction is deferred.
 	 */
-	sendFollowUp?: (token: string, response: APIInteractionResponse) => void;
+	sendFollowUp?: (token: string, response: APIInteractionResponse, messageId?: string) => Promise<void>;
 }
 
 export const ModalSubmitInteraction = {};
@@ -49,7 +49,7 @@ export function createModalSubmitInteraction(
 	interaction: APIModalSubmitInteraction,
 	helpers?: {
 		onAck?: (response: APIInteractionResponse) => void;
-		sendFollowUp?: (token: string, response: APIInteractionResponse) => void;
+		sendFollowUp?: (token: string, response: APIInteractionResponse, messageId?: string) => Promise<void>;
 	}
 ): ModalSubmitInteraction {
 	let capturedResponse: APIInteractionResponse | null = null;
@@ -62,9 +62,9 @@ export function createModalSubmitInteraction(
 		return response;
 	};
 
-	const reply = (
+	const reply = async (
 		data: InteractionMessageData,
-	): APIInteractionResponseChannelMessageWithSource => {
+	): Promise<APIInteractionResponseChannelMessageWithSource> => {
 		const normalisedData = normaliseInteractionMessageData(data);
 		if (!normalisedData) {
 			throw new Error(
@@ -78,7 +78,7 @@ export function createModalSubmitInteraction(
 		});
 
 		if (isDeferred && helpers?.sendFollowUp) {
-			helpers.sendFollowUp(interaction.token, response);
+			await helpers.sendFollowUp(interaction.token, response, '');
 		} else {
 			helpers?.onAck?.(response);
 		}

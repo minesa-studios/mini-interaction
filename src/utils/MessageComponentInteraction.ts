@@ -46,25 +46,10 @@ export const ResolvedMentionableOption = {};
 /**
  * Base helper methods available on all component interactions.
  */
-type BaseComponentInteractionHelpers = {
-	getResponse: () => APIInteractionResponse | null;
-	reply: (
-		data: InteractionMessageData,
-	) => APIInteractionResponseChannelMessageWithSource;
-	deferReply: (
-		options?: DeferReplyOptions,
-	) => APIInteractionResponseDeferredChannelMessageWithSource;
-	update: (
-		data?: InteractionMessageData,
-	) => APIInteractionResponseUpdateMessage;
-	deferUpdate: () => APIInteractionResponseDeferredMessageUpdate;
-	showModal: (
-		data:
-			| APIModalInteractionResponseCallbackData
-			| { toJSON(): APIModalInteractionResponseCallbackData },
-	) => APIModalInteractionResponse;
+export type BaseComponentInteractionHelpers = {
+	trackTiming?: (interactionId: string, operation: string, startTime: number, success: boolean) => void;
 	onAck?: (response: APIInteractionResponse) => void;
-	sendFollowUp?: (token: string, response: APIInteractionResponse) => void;
+	sendFollowUp?: (token: string, response: APIInteractionResponse, messageId?: string) => Promise<void>;
 };
 
 /**
@@ -72,9 +57,24 @@ type BaseComponentInteractionHelpers = {
  * Buttons don't have values or resolved data.
  */
 export interface ButtonInteraction
-	extends Omit<APIMessageComponentInteraction, "data">,
-		BaseComponentInteractionHelpers {
+	extends Omit<APIMessageComponentInteraction, "data"> {
 	data: APIMessageButtonInteractionData;
+	getResponse: () => APIInteractionResponse | null;
+	reply: (
+		data: InteractionMessageData,
+	) => Promise<APIInteractionResponseChannelMessageWithSource>;
+	deferReply: (
+		options?: DeferReplyOptions,
+	) => APIInteractionResponseDeferredChannelMessageWithSource;
+	update: (
+		data?: InteractionMessageData,
+	) => Promise<APIInteractionResponseUpdateMessage>;
+	deferUpdate: () => APIInteractionResponseDeferredMessageUpdate;
+	showModal: (
+		data:
+			| APIModalInteractionResponseCallbackData
+			| { toJSON(): APIModalInteractionResponseCallbackData },
+	) => APIModalInteractionResponse;
 }
 
 export const ButtonInteraction = {};
@@ -83,11 +83,26 @@ export const ButtonInteraction = {};
  * String select menu interaction with helper methods.
  */
 export interface StringSelectInteraction
-	extends Omit<APIMessageComponentInteraction, "data">,
-		BaseComponentInteractionHelpers {
+	extends Omit<APIMessageComponentInteraction, "data"> {
 	data: APIMessageStringSelectInteractionData;
 	values: string[];
 	getStringValues: () => string[];
+	getResponse: () => APIInteractionResponse | null;
+	reply: (
+		data: InteractionMessageData,
+	) => Promise<APIInteractionResponseChannelMessageWithSource>;
+	deferReply: (
+		options?: DeferReplyOptions,
+	) => APIInteractionResponseDeferredChannelMessageWithSource;
+	update: (
+		data?: InteractionMessageData,
+	) => Promise<APIInteractionResponseUpdateMessage>;
+	deferUpdate: () => APIInteractionResponseDeferredMessageUpdate;
+	showModal: (
+		data:
+			| APIModalInteractionResponseCallbackData
+			| { toJSON(): APIModalInteractionResponseCallbackData },
+	) => APIModalInteractionResponse;
 }
 
 export const StringSelectInteraction = {};
@@ -96,11 +111,26 @@ export const StringSelectInteraction = {};
  * Role select menu interaction with helper methods.
  */
 export interface RoleSelectInteraction
-	extends Omit<APIMessageComponentInteraction, "data">,
-		BaseComponentInteractionHelpers {
+	extends Omit<APIMessageComponentInteraction, "data"> {
 	data: APIMessageRoleSelectInteractionData;
 	values: string[];
 	getRoles: () => APIRole[];
+	getResponse: () => APIInteractionResponse | null;
+	reply: (
+		data: InteractionMessageData,
+	) => Promise<APIInteractionResponseChannelMessageWithSource>;
+	deferReply: (
+		options?: DeferReplyOptions,
+	) => APIInteractionResponseDeferredChannelMessageWithSource;
+	update: (
+		data?: InteractionMessageData,
+	) => Promise<APIInteractionResponseUpdateMessage>;
+	deferUpdate: () => APIInteractionResponseDeferredMessageUpdate;
+	showModal: (
+		data:
+			| APIModalInteractionResponseCallbackData
+			| { toJSON(): APIModalInteractionResponseCallbackData },
+	) => APIModalInteractionResponse;
 }
 
 export const RoleSelectInteraction = {};
@@ -109,11 +139,26 @@ export const RoleSelectInteraction = {};
  * User select menu interaction with helper methods.
  */
 export interface UserSelectInteraction
-	extends Omit<APIMessageComponentInteraction, "data">,
-		BaseComponentInteractionHelpers {
+	extends Omit<APIMessageComponentInteraction, "data"> {
 	data: APIMessageUserSelectInteractionData;
 	values: string[];
 	getUsers: () => ResolvedUserOption[];
+	getResponse: () => APIInteractionResponse | null;
+	reply: (
+		data: InteractionMessageData,
+	) => Promise<APIInteractionResponseChannelMessageWithSource>;
+	deferReply: (
+		options?: DeferReplyOptions,
+	) => APIInteractionResponseDeferredChannelMessageWithSource;
+	update: (
+		data?: InteractionMessageData,
+	) => Promise<APIInteractionResponseUpdateMessage>;
+	deferUpdate: () => APIInteractionResponseDeferredMessageUpdate;
+	showModal: (
+		data:
+			| APIModalInteractionResponseCallbackData
+			| { toJSON(): APIModalInteractionResponseCallbackData },
+	) => APIModalInteractionResponse;
 }
 
 export const UserSelectInteraction = {};
@@ -122,11 +167,26 @@ export const UserSelectInteraction = {};
  * Channel select menu interaction with helper methods.
  */
 export interface ChannelSelectInteraction
-	extends Omit<APIMessageComponentInteraction, "data">,
-		BaseComponentInteractionHelpers {
+	extends Omit<APIMessageComponentInteraction, "data"> {
 	data: APIMessageChannelSelectInteractionData;
 	values: string[];
 	getChannels: () => APIInteractionDataResolvedChannel[];
+	getResponse: () => APIInteractionResponse | null;
+	reply: (
+		data: InteractionMessageData,
+	) => Promise<APIInteractionResponseChannelMessageWithSource>;
+	deferReply: (
+		options?: DeferReplyOptions,
+	) => APIInteractionResponseDeferredChannelMessageWithSource;
+	update: (
+		data?: InteractionMessageData,
+	) => Promise<APIInteractionResponseUpdateMessage>;
+	deferUpdate: () => APIInteractionResponseDeferredMessageUpdate;
+	showModal: (
+		data:
+			| APIModalInteractionResponseCallbackData
+			| { toJSON(): APIModalInteractionResponseCallbackData },
+	) => APIModalInteractionResponse;
 }
 
 export const ChannelSelectInteraction = {};
@@ -135,11 +195,26 @@ export const ChannelSelectInteraction = {};
  * Mentionable select menu interaction with helper methods.
  */
 export interface MentionableSelectInteraction
-	extends Omit<APIMessageComponentInteraction, "data">,
-		BaseComponentInteractionHelpers {
+	extends Omit<APIMessageComponentInteraction, "data"> {
 	data: APIMessageMentionableSelectInteractionData;
 	values: string[];
 	getMentionables: () => ResolvedMentionableOption[];
+	getResponse: () => APIInteractionResponse | null;
+	reply: (
+		data: InteractionMessageData,
+	) => Promise<APIInteractionResponseChannelMessageWithSource>;
+	deferReply: (
+		options?: DeferReplyOptions,
+	) => APIInteractionResponseDeferredChannelMessageWithSource;
+	update: (
+		data?: InteractionMessageData,
+	) => Promise<APIInteractionResponseUpdateMessage>;
+	deferUpdate: () => APIInteractionResponseDeferredMessageUpdate;
+	showModal: (
+		data:
+			| APIModalInteractionResponseCallbackData
+			| { toJSON(): APIModalInteractionResponseCallbackData },
+	) => APIModalInteractionResponse;
 }
 
 export const MentionableSelectInteraction = {};
@@ -154,13 +229,13 @@ export type MessageComponentInteraction = APIMessageComponentInteraction & {
 	getResponse: () => APIInteractionResponse | null;
 	reply: (
 		data: InteractionMessageData,
-	) => APIInteractionResponseChannelMessageWithSource;
+	) => Promise<APIInteractionResponseChannelMessageWithSource>;
 	deferReply: (
 		options?: DeferReplyOptions,
 	) => APIInteractionResponseDeferredChannelMessageWithSource;
 	update: (
 		data?: InteractionMessageData,
-	) => APIInteractionResponseUpdateMessage;
+	) => Promise<APIInteractionResponseUpdateMessage>;
 	deferUpdate: () => APIInteractionResponseDeferredMessageUpdate;
 	showModal: (
 		data:
@@ -171,7 +246,7 @@ export type MessageComponentInteraction = APIMessageComponentInteraction & {
 	 * Finalise the interaction response via a webhook follow-up.
 	 * This is automatically called by reply() and update() if the interaction is deferred.
 	 */
-	sendFollowUp?: (token: string, response: APIInteractionResponse) => void;
+	sendFollowUp?: (token: string, response: APIInteractionResponse, messageId?: string) => Promise<void>;
 	/**
 	 * The selected values from a select menu interaction.
 	 * This property is only present for select menu interactions.
@@ -211,14 +286,12 @@ export const MessageComponentInteraction = {};
  * Wraps a raw component interaction with helper methods mirroring Discord's expected responses.
  *
  * @param interaction - The raw interaction payload from Discord.
+ * @param helpers - Optional callback to capture the final interaction response.
  * @returns A helper-augmented interaction object.
  */
 export function createMessageComponentInteraction(
 	interaction: APIMessageComponentInteraction,
-	helpers?: {
-		onAck?: (response: APIInteractionResponse) => void;
-		sendFollowUp?: (token: string, response: APIInteractionResponse) => void;
-	}
+	helpers?: BaseComponentInteractionHelpers,
 ): MessageComponentInteraction {
 	let capturedResponse: APIInteractionResponse | null = null;
 	let isDeferred = false;
@@ -230,9 +303,9 @@ export function createMessageComponentInteraction(
 		return response;
 	};
 
-	const reply = (
+	const reply = async (
 		data: InteractionMessageData,
-	): APIInteractionResponseChannelMessageWithSource => {
+	): Promise<APIInteractionResponseChannelMessageWithSource> => {
 		const normalisedData = normaliseInteractionMessageData(data);
 		if (!normalisedData) {
 			throw new Error(
@@ -243,10 +316,10 @@ export function createMessageComponentInteraction(
 		const response = captureResponse({
 			type: InteractionResponseType.ChannelMessageWithSource,
 			data: normalisedData,
-		} satisfies APIInteractionResponseChannelMessageWithSource);
+		});
 
 		if (isDeferred && helpers?.sendFollowUp) {
-			helpers.sendFollowUp(interaction.token, response);
+			await helpers.sendFollowUp(interaction.token, response, '');
 		} else {
 			helpers?.onAck?.(response);
 		}
@@ -275,25 +348,29 @@ export function createMessageComponentInteraction(
 		return response;
 	};
 
-	const update = (
+	const update = async (
 		data?: InteractionMessageData,
-	): APIInteractionResponseUpdateMessage => {
+	): Promise<APIInteractionResponseUpdateMessage> => {
 		const normalisedData = normaliseInteractionMessageData(data);
 
-		const response: APIInteractionResponseUpdateMessage = normalisedData
-			? {
-					type: InteractionResponseType.UpdateMessage,
-					data: normalisedData,
-			  }
-			: {
-					type: InteractionResponseType.UpdateMessage,
-			  };
+		const response = captureResponse(
+			normalisedData
+				? {
+						type: InteractionResponseType.UpdateMessage,
+						data: normalisedData,
+				  }
+				: {
+						type: InteractionResponseType.UpdateMessage,
+				  },
+		);
 
 		if (isDeferred && helpers?.sendFollowUp) {
-			helpers.sendFollowUp(interaction.token, response);
+			await helpers.sendFollowUp(interaction.token, response, '@original');
+		} else {
+			helpers?.onAck?.(response);
 		}
 
-		return captureResponse(response);
+		return response;
 	};
 
 	const deferUpdate = (): APIInteractionResponseDeferredMessageUpdate => {
