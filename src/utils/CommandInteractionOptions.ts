@@ -22,6 +22,7 @@ import {
 	type APIInteractionDataResolvedGuildMember,
 	type APIModalInteractionResponse,
 	type APIModalInteractionResponseCallbackData,
+	type APIInteractionResponseCallbackData,
 	type APIInteractionResponseChannelMessageWithSource,
 	type APIInteractionResponseDeferredChannelMessageWithSource,
 	type APIInteractionResponseUpdateMessage,
@@ -37,6 +38,10 @@ import {
 	normaliseInteractionMessageData,
 	normaliseMessageFlags,
 } from "./interactionMessageHelpers.js";
+import type {
+	InteractionFollowUpFlags,
+	InteractionReplyFlags,
+} from "../types/InteractionFlags.js";
 
 type BasicInteractionOption =
 	APIApplicationCommandInteractionDataBasicOption<InteractionType.ApplicationCommand>;
@@ -77,19 +82,19 @@ const OPTION_TYPE_LABEL: Record<ApplicationCommandOptionType, string> = {
 };
 
 function isSubcommandOption(
-	option: APIApplicationCommandInteractionDataOption
+	option: APIApplicationCommandInteractionDataOption,
 ): option is APIApplicationCommandInteractionDataSubcommandOption {
 	return option.type === ApplicationCommandOptionType.Subcommand;
 }
 
 function isSubcommandGroupOption(
-	option: APIApplicationCommandInteractionDataOption
+	option: APIApplicationCommandInteractionDataOption,
 ): option is APIApplicationCommandInteractionDataSubcommandGroupOption {
 	return option.type === ApplicationCommandOptionType.SubcommandGroup;
 }
 
 function resolveFocusedOptions(
-	options: APIApplicationCommandInteractionDataOption[] | undefined
+	options: APIApplicationCommandInteractionDataOption[] | undefined,
 ): FocusedOptionsResult {
 	if (!options || options.length === 0) {
 		return { subcommandGroup: null, subcommand: null, options: [] };
@@ -139,7 +144,7 @@ export class CommandInteractionOptionResolver {
 
 	constructor(
 		options: APIApplicationCommandInteractionDataOption[] | undefined,
-		resolved: APIInteractionDataResolved | undefined
+		resolved: APIInteractionDataResolved | undefined,
 	) {
 		this.raw = Object.freeze([...(options ?? [])]);
 		this.resolved = resolved;
@@ -157,7 +162,7 @@ export class CommandInteractionOptionResolver {
 
 		if (required) {
 			throw new Error(
-				"Expected a subcommand to be present on this interaction"
+				"Expected a subcommand to be present on this interaction",
 			);
 		}
 
@@ -171,7 +176,7 @@ export class CommandInteractionOptionResolver {
 
 		if (required) {
 			throw new Error(
-				"Expected a subcommand group to be present on this interaction"
+				"Expected a subcommand group to be present on this interaction",
 			);
 		}
 
@@ -183,7 +188,7 @@ export class CommandInteractionOptionResolver {
 			this.extractOption<APIApplicationCommandInteractionDataStringOption>(
 				name,
 				ApplicationCommandOptionType.String,
-				required
+				required,
 			);
 		return option ? option.value : null;
 	}
@@ -207,7 +212,7 @@ export class CommandInteractionOptionResolver {
 			this.extractOption<APIApplicationCommandInteractionDataBooleanOption>(
 				name,
 				ApplicationCommandOptionType.Boolean,
-				required
+				required,
 			);
 		return option ? option.value : null;
 	}
@@ -217,7 +222,7 @@ export class CommandInteractionOptionResolver {
 			this.extractOption<APIApplicationCommandInteractionDataUserOption>(
 				name,
 				ApplicationCommandOptionType.User,
-				required
+				required,
 			);
 
 		if (!option) {
@@ -228,7 +233,7 @@ export class CommandInteractionOptionResolver {
 		if (!resolvedUser) {
 			if (required) {
 				throw new Error(
-					`Resolved data for user option "${name}" is missing`
+					`Resolved data for user option "${name}" is missing`,
 				);
 			}
 
@@ -243,7 +248,7 @@ export class CommandInteractionOptionResolver {
 			this.extractOption<APIApplicationCommandInteractionDataRoleOption>(
 				name,
 				ApplicationCommandOptionType.Role,
-				required
+				required,
 			);
 
 		if (!option) {
@@ -253,7 +258,7 @@ export class CommandInteractionOptionResolver {
 		const role = this.resolveRole(option.value);
 		if (!role && required) {
 			throw new Error(
-				`Resolved data for role option "${name}" is missing`
+				`Resolved data for role option "${name}" is missing`,
 			);
 		}
 
@@ -262,13 +267,13 @@ export class CommandInteractionOptionResolver {
 
 	getChannel(
 		name: string,
-		required = false
+		required = false,
 	): APIInteractionDataResolvedChannel | null {
 		const option =
 			this.extractOption<APIApplicationCommandInteractionDataChannelOption>(
 				name,
 				ApplicationCommandOptionType.Channel,
-				required
+				required,
 			);
 
 		if (!option) {
@@ -278,7 +283,7 @@ export class CommandInteractionOptionResolver {
 		const channel = this.resolveChannel(option.value);
 		if (!channel && required) {
 			throw new Error(
-				`Resolved data for channel option "${name}" is missing`
+				`Resolved data for channel option "${name}" is missing`,
 			);
 		}
 
@@ -290,7 +295,7 @@ export class CommandInteractionOptionResolver {
 			this.extractOption<APIApplicationCommandInteractionDataAttachmentOption>(
 				name,
 				ApplicationCommandOptionType.Attachment,
-				required
+				required,
 			);
 
 		if (!option) {
@@ -300,7 +305,7 @@ export class CommandInteractionOptionResolver {
 		const attachment = this.resolveAttachment(option.value);
 		if (!attachment && required) {
 			throw new Error(
-				`Resolved data for attachment option "${name}" is missing`
+				`Resolved data for attachment option "${name}" is missing`,
 			);
 		}
 
@@ -312,7 +317,7 @@ export class CommandInteractionOptionResolver {
 			this.extractOption<APIApplicationCommandInteractionDataMentionableOption>(
 				name,
 				ApplicationCommandOptionType.Mentionable,
-				required
+				required,
 			);
 
 		if (!option) {
@@ -331,7 +336,7 @@ export class CommandInteractionOptionResolver {
 
 		if (required) {
 			throw new Error(
-				`Resolved data for mentionable option "${name}" is missing`
+				`Resolved data for mentionable option "${name}" is missing`,
 			);
 		}
 
@@ -339,7 +344,7 @@ export class CommandInteractionOptionResolver {
 	}
 
 	getRawOption(
-		name: string
+		name: string,
 	): APIApplicationCommandInteractionDataOption | null {
 		return (
 			this.focusedOptions.find((option) => option.name === name) ?? null
@@ -349,16 +354,16 @@ export class CommandInteractionOptionResolver {
 	private extractOption<Option extends BasicInteractionOption>(
 		name: string,
 		type: ApplicationCommandOptionType,
-		required: boolean
+		required: boolean,
 	): Option | null {
 		const option = this.focusedOptions.find(
-			(candidate) => candidate.name === name
+			(candidate) => candidate.name === name,
 		);
 
 		if (!option) {
 			if (required) {
 				throw new Error(
-					`Required ${OPTION_TYPE_LABEL[type]} option "${name}" is missing`
+					`Required ${OPTION_TYPE_LABEL[type]} option "${name}" is missing`,
 				);
 			}
 
@@ -367,9 +372,8 @@ export class CommandInteractionOptionResolver {
 
 		if (option.type !== type) {
 			throw new Error(
-				`Option "${name}" is a ${
-					OPTION_TYPE_LABEL[option.type]
-				}, expected ${OPTION_TYPE_LABEL[type]}`
+				`Option "${name}" is a ${OPTION_TYPE_LABEL[option.type]
+				}, expected ${OPTION_TYPE_LABEL[type]}`,
 			);
 		}
 
@@ -381,7 +385,7 @@ export class CommandInteractionOptionResolver {
 	}
 
 	private resolveChannel(
-		id: string
+		id: string,
 	): APIInteractionDataResolvedChannel | undefined {
 		return this.getResolvedRecord(this.resolved?.channels, id);
 	}
@@ -402,7 +406,7 @@ export class CommandInteractionOptionResolver {
 
 	private getResolvedRecord<T>(
 		records: ResolvedRecords<T>,
-		id: string
+		id: string,
 	): T | undefined {
 		return records?.[id];
 	}
@@ -416,42 +420,31 @@ export interface CommandInteraction
 	options: CommandInteractionOptionResolver;
 	getResponse(): APIInteractionResponse | null;
 	reply(
-		data: InteractionMessageData
+		data: InteractionMessageData,
 	): APIInteractionResponseChannelMessageWithSource;
 	followUp(
-		data: InteractionMessageData
-	): Promise<APIInteractionResponseChannelMessageWithSource>;
+		data: InteractionMessageData,
+	): Promise<void>;
 	edit(data?: InteractionMessageData): APIInteractionResponseUpdateMessage;
 	editReply(
-		data?: InteractionMessageData
-	): Promise<
-		| APIInteractionResponseChannelMessageWithSource
-		| APIInteractionResponseUpdateMessage
-	>;
+		data?: InteractionMessageData,
+	): Promise<void>;
 	deferReply(
-		options?: DeferReplyOptions
+		options?: DeferReplyOptions,
 	): APIInteractionResponseDeferredChannelMessageWithSource;
 	showModal(
 		data:
 			| APIModalInteractionResponseCallbackData
-			| { toJSON(): APIModalInteractionResponseCallbackData }
+			| { toJSON(): APIModalInteractionResponseCallbackData },
 	): APIModalInteractionResponse;
 	withTimeoutProtection<T>(
 		operation: () => Promise<T>,
-		deferOptions?: DeferReplyOptions
+		deferOptions?: DeferReplyOptions,
 	): Promise<T>;
 	canRespond?(interactionId: string): boolean;
-	trackResponse?(
-		interactionId: string,
-		token: string,
-		state: "responded" | "deferred"
-	): void;
+	trackResponse?(interactionId: string, token: string, state: 'responded' | 'deferred'): void;
 	onAck?(response: APIInteractionResponse): void;
-	sendFollowUp?(
-		token: string,
-		response: APIInteractionResponse,
-		messageId?: string
-	): Promise<void>;
+	sendFollowUp?(token: string, response: APIInteractionResponse, messageId?: string): Promise<void>;
 }
 
 export const CommandInteraction = {};
@@ -460,28 +453,15 @@ export function createCommandInteraction(
 	interaction: APIChatInputApplicationCommandInteraction,
 	helpers?: {
 		canRespond?: (interactionId: string) => boolean;
-		trackResponse?: (
-			interactionId: string,
-			token: string,
-			state: "responded" | "deferred"
-		) => void;
-		logTiming?: (
-			interactionId: string,
-			operation: string,
-			startTime: number,
-			success: boolean
-		) => void;
+		trackResponse?: (interactionId: string, token: string, state: 'responded' | 'deferred') => void;
+		logTiming?: (interactionId: string, operation: string, startTime: number, success: boolean) => void;
 		onAck?: (response: APIInteractionResponse) => void;
-		sendFollowUp?: (
-			token: string,
-			response: APIInteractionResponse,
-			messageId?: string
-		) => Promise<void>;
+		sendFollowUp?: (token: string, response: APIInteractionResponse, messageId?: string) => Promise<void>;
 	}
 ): CommandInteraction {
 	const options = new CommandInteractionOptionResolver(
 		interaction.data.options,
-		interaction.data.resolved
+		interaction.data.resolved,
 	);
 
 	let capturedResponse: APIInteractionResponse | null = null;
@@ -489,7 +469,7 @@ export function createCommandInteraction(
 	let hasResponded = false;
 
 	const captureResponse = <T extends APIInteractionResponse>(
-		response: T
+		response: T,
 	): T => {
 		capturedResponse = response;
 		return response;
@@ -497,17 +477,17 @@ export function createCommandInteraction(
 
 	function createMessageResponse(
 		type: InteractionResponseType.ChannelMessageWithSource,
-		data: InteractionMessageData
+		data: InteractionMessageData,
 	): APIInteractionResponseChannelMessageWithSource;
 	function createMessageResponse(
 		type: InteractionResponseType.UpdateMessage,
-		data?: InteractionMessageData
+		data?: InteractionMessageData,
 	): APIInteractionResponseUpdateMessage;
 	function createMessageResponse(
 		type:
 			| InteractionResponseType.ChannelMessageWithSource
 			| InteractionResponseType.UpdateMessage,
-		data?: InteractionMessageData
+		data?: InteractionMessageData,
 	):
 		| APIInteractionResponseChannelMessageWithSource
 		| APIInteractionResponseUpdateMessage {
@@ -516,7 +496,7 @@ export function createCommandInteraction(
 		if (type === InteractionResponseType.ChannelMessageWithSource) {
 			if (!normalisedData) {
 				throw new Error(
-					"[MiniInteraction] Channel message responses require data to be provided."
+					"[MiniInteraction] Channel message responses require data to be provided.",
 				);
 			}
 
@@ -534,7 +514,7 @@ export function createCommandInteraction(
 	}
 
 	const createDeferredResponse = (
-		data?: DeferredResponseData
+		data?: DeferredResponseData,
 	): APIInteractionResponseDeferredChannelMessageWithSource => {
 		if (!data) {
 			return captureResponse({
@@ -560,17 +540,15 @@ export function createCommandInteraction(
 		},
 		reply(data) {
 			if (this.canRespond && !this.canRespond(this.id)) {
-				throw new Error(
-					"Interaction cannot respond: already responded or expired"
-				);
+				throw new Error('Interaction cannot respond: already responded or expired');
 			}
 
 			const response = createMessageResponse(
 				InteractionResponseType.ChannelMessageWithSource,
-				data
+				data,
 			);
 
-			this.trackResponse?.(this.id, this.token, "responded");
+			this.trackResponse?.(this.id, this.token, 'responded');
 			hasResponded = true;
 			this.onAck?.(response);
 
@@ -579,7 +557,7 @@ export function createCommandInteraction(
 		async followUp(data) {
 			const normalisedData = normaliseInteractionMessageData(data);
 			if (!normalisedData) {
-				throw new Error("[MiniInteraction] followUp requires data");
+				throw new Error('[MiniInteraction] followUp requires data');
 			}
 
 			const response: APIInteractionResponseChannelMessageWithSource = {
@@ -588,70 +566,49 @@ export function createCommandInteraction(
 			};
 
 			if (this.sendFollowUp) {
-				await this.sendFollowUp(this.token, response, "");
+				await this.sendFollowUp(this.token, response, '');
 			}
-
-			return response;
 		},
 		edit(data) {
 			return createMessageResponse(
 				InteractionResponseType.UpdateMessage,
-				data
+				data,
 			);
 		},
 		async editReply(data) {
 			if (this.canRespond && !this.canRespond(this.id)) {
-				throw new Error("Interaction cannot edit reply: expired");
+				throw new Error('Interaction cannot edit reply: expired');
 			}
 
-			if (isDeferred) {
-				const normalisedData = normaliseInteractionMessageData(data);
-				if (!normalisedData) {
-					throw new Error(
-						"[MiniInteraction] editReply requires data when deferred"
-					);
-				}
-
-				const response: APIInteractionResponseChannelMessageWithSource =
-					{
-						type: InteractionResponseType.ChannelMessageWithSource,
-						data: normalisedData,
-					};
-
-				if (this.sendFollowUp) {
-					await this.sendFollowUp(this.token, response, "@original");
-				}
-
-				this.trackResponse?.(this.id, this.token, "responded");
-				hasResponded = true;
-
-				return response;
+			const normalisedData = normaliseInteractionMessageData(data);
+			if (!normalisedData) {
+				throw new Error('[MiniInteraction] editReply requires data');
 			}
 
-			const response = createMessageResponse(
-				InteractionResponseType.ChannelMessageWithSource,
-				data!
-			);
+			const response: APIInteractionResponseChannelMessageWithSource = {
+				type: InteractionResponseType.ChannelMessageWithSource,
+				data: normalisedData,
+			};
 
-			this.trackResponse?.(this.id, this.token, "responded");
+			if (this.sendFollowUp) {
+				await this.sendFollowUp(this.token, response, '@original');
+			}
+
+			this.trackResponse?.(this.id, this.token, 'responded');
 			hasResponded = true;
-
-			return response;
 		},
 		deferReply(options) {
 			if (this.canRespond && !this.canRespond(this.id)) {
-				throw new Error(
-					"Interaction cannot defer: already responded or expired"
-				);
+				throw new Error('Interaction cannot defer: already responded or expired');
 			}
 
 			const response = createDeferredResponse(
 				options?.flags !== undefined
 					? { flags: options.flags }
-					: undefined
+					: undefined,
 			);
 
-			this.trackResponse?.(this.id, this.token, "deferred");
+			this.trackResponse?.(this.id, this.token, 'deferred');
 			isDeferred = true;
 			this.onAck?.(response);
 
@@ -660,8 +617,8 @@ export function createCommandInteraction(
 		showModal(data) {
 			const resolvedData: APIModalInteractionResponseCallbackData =
 				typeof data === "object" &&
-				"toJSON" in data &&
-				typeof data.toJSON === "function"
+					"toJSON" in data &&
+					typeof data.toJSON === "function"
 					? data.toJSON()
 					: (data as APIModalInteractionResponseCallbackData);
 			return captureResponse({
@@ -672,7 +629,7 @@ export function createCommandInteraction(
 
 		async withTimeoutProtection<T>(
 			operation: () => Promise<T>,
-			deferOptions?: DeferReplyOptions
+			deferOptions?: DeferReplyOptions,
 		): Promise<T> {
 			const startTime = Date.now();
 			let deferred = false;
@@ -681,7 +638,7 @@ export function createCommandInteraction(
 				if (!deferred) {
 					console.warn(
 						"[MiniInteraction] Auto-deferring interaction due to slow operation. " +
-							"Consider using deferReply() explicitly for better user experience."
+						"Consider using deferReply() explicitly for better user experience."
 					);
 					this.deferReply(deferOptions);
 					deferred = true;
@@ -697,7 +654,7 @@ export function createCommandInteraction(
 				if (elapsed > 2000 && !deferred) {
 					console.warn(
 						`[MiniInteraction] Operation completed in ${elapsed}ms. ` +
-							"Consider using deferReply() for operations > 2 seconds."
+						"Consider using deferReply() for operations > 2 seconds."
 					);
 				}
 
