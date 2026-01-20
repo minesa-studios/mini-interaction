@@ -544,9 +544,14 @@ export function createCommandInteraction(
 				data,
 			);
 
+			if (isDeferred && this.sendFollowUp) {
+				this.sendFollowUp(this.token, response, '');
+			} else {
+				this.onAck?.(response);
+			}
+
 			this.trackResponse?.(this.id, this.token, 'responded');
 			hasResponded = true;
-			this.onAck?.(response);
 
 			return response;
 		},
@@ -576,18 +581,21 @@ export function createCommandInteraction(
 				throw new Error('Interaction cannot edit reply: expired');
 			}
 
-			const normalisedData = normaliseInteractionMessageData(data);
-			if (!normalisedData) {
+			const normalizedData = normaliseInteractionMessageData(data);
+			if (!normalizedData) {
 				throw new Error('[MiniInteraction] editReply requires data');
 			}
 
 			const response: APIInteractionResponseChannelMessageWithSource = {
 				type: InteractionResponseType.ChannelMessageWithSource,
-				data: normalisedData,
+				data: normalizedData,
 			};
 
-			if (this.sendFollowUp) {
+			if (this.sendFollowUp && (isDeferred || hasResponded)) {
 				await this.sendFollowUp(this.token, response, '@original');
+			} else {
+				captureResponse(response);
+				this.onAck?.(response);
 			}
 
 			this.trackResponse?.(this.id, this.token, 'responded');

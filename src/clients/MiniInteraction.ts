@@ -2008,7 +2008,7 @@ export class MiniInteraction {
 								canRespond: (id) => this.canRespond(id),
 								trackResponse: (id, token, state) => this.trackInteractionState(id, token, state),
 								onAck: (response) => ackResolver?.(response),
-								sendFollowUp: (token, response, messageId) => this.sendFollowUp(token, response, messageId),
+								sendFollowUp,
 							}
 						);
 						response = await command.handler(
