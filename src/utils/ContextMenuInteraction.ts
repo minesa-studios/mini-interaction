@@ -150,9 +150,15 @@ function createContextMenuInteractionHelpers(
 			InteractionResponseType.ChannelMessageWithSource,
 			data,
 		);
+
+		if (isDeferred && helpers?.sendFollowUp) {
+			helpers.sendFollowUp(interaction.token, response, '@original');
+		} else {
+			helpers?.onAck?.(response);
+		}
+
 		hasResponded = true;
 		helpers?.trackResponse?.(interaction.id, interaction.token, 'responded');
-		helpers?.onAck?.(response);
 		return response;
 	};
 
@@ -166,6 +172,9 @@ function createContextMenuInteractionHelpers(
 		if (helpers?.sendFollowUp) {
 			await helpers.sendFollowUp(interaction.token, response, '');
 		}
+
+		hasResponded = true;
+		helpers?.trackResponse?.(interaction.id, interaction.token, 'responded');
 		return response;
 	};
 
@@ -188,6 +197,8 @@ function createContextMenuInteractionHelpers(
 			return capturedResponse as APIInteractionResponseUpdateMessage;
 		}
 
+		captureResponse(response);
+		helpers?.onAck?.(response);
 		hasResponded = true;
 		helpers?.trackResponse?.(interaction.id, interaction.token, 'responded');
 		return response as APIInteractionResponseChannelMessageWithSource;

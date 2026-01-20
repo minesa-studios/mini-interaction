@@ -402,6 +402,11 @@ export class MiniInteraction {
 			return false;
 		}
 
+		// Initial response only allowed once if not deferred
+		if (state.state === 'responded' && !state.token) {
+			return false;
+		}
+
 		return true;
 	}
 
@@ -2186,8 +2191,11 @@ export class MiniInteraction {
 			if (!fetchResponse.ok) {
 				const errorBody = await fetchResponse.text();
 				console.error(
-					`[MiniInteraction] Failed to send follow-up response: [${fetchResponse.status}] ${errorBody}`,
+					`[MiniInteraction] Failed to send follow-up response (id=${messageId || 'new'}): [${fetchResponse.status}] ${errorBody}`,
 				);
+				if (fetchResponse.status === 404) {
+					console.error("[MiniInteraction] Hint: Interaction token might have expired or the message was deleted.");
+				}
 			}
 		} catch (error) {
 			console.error(

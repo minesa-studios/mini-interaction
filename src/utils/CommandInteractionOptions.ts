@@ -545,7 +545,7 @@ export function createCommandInteraction(
 			);
 
 			if (isDeferred && this.sendFollowUp) {
-				this.sendFollowUp(this.token, response, '');
+				this.sendFollowUp(this.token, response, '@original');
 			} else {
 				this.onAck?.(response);
 			}
@@ -569,6 +569,9 @@ export function createCommandInteraction(
 			if (this.sendFollowUp) {
 				await this.sendFollowUp(this.token, response, '');
 			}
+
+			this.trackResponse?.(this.id, this.token, 'responded');
+			hasResponded = true;
 		},
 		edit(data) {
 			return createMessageResponse(

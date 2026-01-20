@@ -342,7 +342,7 @@ export function createMessageComponentInteraction(
 		});
 
 		if (isDeferred && helpers?.sendFollowUp) {
-			await helpers.sendFollowUp(interaction.token, response, '');
+			await helpers.sendFollowUp(interaction.token, response, '@original');
 		} else {
 			helpers?.onAck?.(response);
 		}
