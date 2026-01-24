@@ -2420,9 +2420,21 @@ function createTimeoutWrapper<T extends any[], R>(
 			}, timeoutMs);
 		});
 
+		// Create the handler promise and handle its potential background errors
+		const handlerPromise = (async () => {
+			try {
+				return await handler(...args);
+			} catch (error) {
+				// If this error happens AFTER an ACK was already sent (via ackPromise)
+				// or after a timeout, we MUST still log it because nobody else will catch it.
+				console.error(`[MiniInteraction] ${handlerName} background error:`, error);
+				throw error;
+			}
+		})();
+
 		try {
-			const promises: Promise<R>[] = [
-				Promise.resolve(handler(...args)),
+			const promises: Array<Promise<R>> = [
+				handlerPromise,
 				timeoutPromise,
 			];
 
@@ -2451,7 +2463,7 @@ function createTimeoutWrapper<T extends any[], R>(
 				clearTimeout(timeoutId);
 			}
 
-			// Re-throw the error with additional context
+			// Background errors are already logged above
 			if (
 				error instanceof Error &&
 				error.message.includes("Handler timeout")
@@ -2459,7 +2471,8 @@ function createTimeoutWrapper<T extends any[], R>(
 				throw error;
 			}
 
-			console.error(`[MiniInteraction] ${handlerName} failed:`, error);
+			// Only log here if it wasn't a background error (which we already caught)
+			// But since we catch all in handlerPromise, this is mostly for the timeout/race itself.
 			throw error;
 		}
 	};

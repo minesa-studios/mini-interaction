@@ -424,7 +424,7 @@ export interface CommandInteraction
 	): Promise<APIInteractionResponseChannelMessageWithSource>;
 	edit(data?: InteractionMessageData): APIInteractionResponseUpdateMessage;
 	followUp(data: InteractionMessageData): Promise<void>;
-	editReply(data?: InteractionMessageData): Promise<void>;
+	editReply(data?: InteractionMessageData): Promise<APIInteractionResponseChannelMessageWithSource | APIInteractionResponseUpdateMessage>;
 	deferReply(
 		options?: DeferReplyOptions,
 	): APIInteractionResponseDeferredChannelMessageWithSource;
@@ -603,6 +603,7 @@ export function createCommandInteraction(
 
 			this.trackResponse?.(this.id, this.token, 'responded');
 			hasResponded = true;
+			return response;
 		},
 		deferReply(options) {
 			if (this.canRespond && !this.canRespond(this.id)) {
