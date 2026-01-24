@@ -2405,6 +2405,8 @@ function createTimeoutWrapper<T extends any[], R>(
 	return async (...args: T): Promise<R> => {
 		const startTime = Date.now();
 		let timeoutId: NodeJS.Timeout | undefined;
+		let ackResult: R | null = null;
+		let ackReceived = false;
 
 		const timeoutPromise = new Promise<never>((_, reject) => {
 			timeoutId = setTimeout(() => {
@@ -2420,36 +2422,35 @@ function createTimeoutWrapper<T extends any[], R>(
 			}, timeoutMs);
 		});
 
-		// Create the handler promise and handle its potential background errors
-		const handlerPromise = (async () => {
-			try {
-				return await handler(...args);
-			} catch (error) {
-				// If this error happens AFTER an ACK was already sent (via ackPromise)
-				// or after a timeout, we MUST still log it because nobody else will catch it.
-				console.error(`[MiniInteraction] ${handlerName} background error:`, error);
-				throw error;
-			}
-		})();
+		// If we have an ackPromise, listen for it but DON'T return early
+		// Instead, capture the ACK result and continue waiting for handler
+		if (ackPromise) {
+			ackPromise.then((result) => {
+				ackResult = result;
+				ackReceived = true;
+				// Clear the timeout once we have an ACK - handler can now take longer
+				if (timeoutId) {
+					clearTimeout(timeoutId);
+					timeoutId = undefined;
+				}
+			}).catch(() => {
+				// ACK promise rejection is fine, we'll use handler result
+			});
+		}
 
 		try {
-			const promises: Array<Promise<R>> = [
-				handlerPromise,
+			// ALWAYS wait for handler to complete
+			const handlerResult = await Promise.race([
+				handler(...args),
 				timeoutPromise,
-			];
-
-			if (ackPromise) {
-				promises.push(ackPromise);
-			}
-
-			const result = await Promise.race(promises);
+			]);
 
 			if (timeoutId) {
 				clearTimeout(timeoutId);
 			}
 
 			const elapsed = Date.now() - startTime;
-			if (enableWarnings && elapsed > timeoutMs * 0.8) {
+			if (enableWarnings && elapsed > timeoutMs * 0.8 && !ackReceived) {
 				console.warn(
 					`[MiniInteraction] ${handlerName} completed in ${elapsed}ms (${Math.round(
 						(elapsed / timeoutMs) * 100,
@@ -2457,22 +2458,32 @@ function createTimeoutWrapper<T extends any[], R>(
 				);
 			}
 
-			return result;
+			// If we got an ACK, return that for the HTTP response
+			// The handler has completed at this point so all background work is done
+			if (ackReceived && ackResult !== null) {
+				return ackResult;
+			}
+
+			return handlerResult;
 		} catch (error) {
 			if (timeoutId) {
 				clearTimeout(timeoutId);
 			}
 
-			// Background errors are already logged above
-			if (
-				error instanceof Error &&
-				error.message.includes("Handler timeout")
-			) {
+			// If handler timed out but we have an ACK, return the ACK
+			// This allows deferReply to work even if later operations are slow
+			if (error instanceof Error && error.message.includes("Handler timeout")) {
+				if (ackReceived && ackResult !== null) {
+					console.warn(
+						`[MiniInteraction] ${handlerName} timed out but ACK was already captured. ` +
+						`Background work may not complete in serverless environments.`,
+					);
+					return ackResult;
+				}
 				throw error;
 			}
 
-			// Only log here if it wasn't a background error (which we already caught)
-			// But since we catch all in handlerPromise, this is mostly for the timeout/race itself.
+			console.error(`[MiniInteraction] ${handlerName} failed:`, error);
 			throw error;
 		}
 	};
