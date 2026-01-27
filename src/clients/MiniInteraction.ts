@@ -2417,6 +2417,11 @@ function resolveOAuthConfig(provided?: OAuthConfig): OAuthConfig {
 
 /**
  * Wraps a handler function with timeout detection and error handling.
+ * 
+ * CRITICAL FOR HTTP INTERACTIONS:
+ * When deferReply() is called, we MUST return the ACK to Discord immediately.
+ * The handler continues executing and sends follow-up via webhook.
+ * The ACK must reach Discord before any webhook PATCH requests can succeed.
  */
 function createTimeoutWrapper<T extends any[], R>(
 	handler: (...args: T) => Promise<R> | R,
@@ -2428,8 +2433,6 @@ function createTimeoutWrapper<T extends any[], R>(
 	return async (...args: T): Promise<R> => {
 		const startTime = Date.now();
 		let timeoutId: NodeJS.Timeout | undefined;
-		let ackResult: R | null = null;
-		let ackReceived = false;
 
 		const timeoutPromise = new Promise<never>((_, reject) => {
 			timeoutId = setTimeout(() => {
@@ -2445,26 +2448,46 @@ function createTimeoutWrapper<T extends any[], R>(
 			}, timeoutMs);
 		});
 
-		// If we have an ackPromise, listen for it but DON'T return early
-		// Instead, capture the ACK result and continue waiting for handler
+		// Start handler execution immediately (don't await yet)
+		const handlerPromise = Promise.resolve(handler(...args));
+
+		// If we have an ackPromise, race between ACK and timeout
+		// When ACK is received, return IMMEDIATELY so Discord gets the response
+		// Handler continues in background
 		if (ackPromise) {
-			ackPromise.then((result) => {
-				ackResult = result;
-				ackReceived = true;
-				// Clear the timeout once we have an ACK - handler can now take longer
+			try {
+				const ackResult = await Promise.race([
+					ackPromise,
+					timeoutPromise,
+				]);
+				
+				// ACK received! Clear timeout and return immediately
 				if (timeoutId) {
 					clearTimeout(timeoutId);
-					timeoutId = undefined;
 				}
-			}).catch(() => {
-				// ACK promise rejection is fine, we'll use handler result
-			});
+				
+				// Handler continues in background - attach error handler
+				handlerPromise.catch((error) => {
+					console.error(
+						`[MiniInteraction] ${handlerName} background execution failed:`,
+						error instanceof Error ? error.message : String(error),
+					);
+				});
+				
+				return ackResult;
+			} catch (error) {
+				// Timeout occurred before ACK - fall through to check handler
+				if (timeoutId) {
+					clearTimeout(timeoutId);
+				}
+				throw error;
+			}
 		}
 
+		// No ACK promise - wait for handler with timeout
 		try {
-			// ALWAYS wait for handler to complete
 			const handlerResult = await Promise.race([
-				handler(...args),
+				handlerPromise,
 				timeoutPromise,
 			]);
 
@@ -2473,7 +2496,7 @@ function createTimeoutWrapper<T extends any[], R>(
 			}
 
 			const elapsed = Date.now() - startTime;
-			if (enableWarnings && elapsed > timeoutMs * 0.8 && !ackReceived) {
+			if (enableWarnings && elapsed > timeoutMs * 0.8) {
 				console.warn(
 					`[MiniInteraction] ${handlerName} completed in ${elapsed}ms (${Math.round(
 						(elapsed / timeoutMs) * 100,
@@ -2481,31 +2504,11 @@ function createTimeoutWrapper<T extends any[], R>(
 				);
 			}
 
-			// If we got an ACK, return that for the HTTP response
-			// The handler has completed at this point so all background work is done
-			if (ackReceived && ackResult !== null) {
-				return ackResult;
-			}
-
 			return handlerResult;
 		} catch (error) {
 			if (timeoutId) {
 				clearTimeout(timeoutId);
 			}
-
-			// If handler timed out but we have an ACK, return the ACK
-			// This allows deferReply to work even if later operations are slow
-			if (error instanceof Error && error.message.includes("Handler timeout")) {
-				if (ackReceived && ackResult !== null) {
-					console.warn(
-						`[MiniInteraction] ${handlerName} timed out but ACK was already captured. ` +
-						`Background work may not complete in serverless environments.`,
-					);
-					return ackResult;
-				}
-				throw error;
-			}
-
 			console.error(`[MiniInteraction] ${handlerName} failed:`, error);
 			throw error;
 		}
