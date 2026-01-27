@@ -2161,8 +2161,14 @@ export class MiniInteraction {
 		messageId: string = "@original",
 		retryCount: number = 0,
 	): Promise<void> {
-		const MAX_RETRIES = 3;
-		const BASE_DELAY_MS = 250; // Start with 250ms delay
+		const MAX_RETRIES = 5;
+		const BASE_DELAY_MS = 200; // Start with 200ms delay
+		const INITIAL_DELAY_MS = 100; // Wait for ACK to propagate to Discord
+
+		// On first attempt, add a small delay to allow ACK to propagate
+		if (retryCount === 0) {
+			await new Promise(resolve => setTimeout(resolve, INITIAL_DELAY_MS));
+		}
 
 		const isEdit = messageId !== "";
 		const url = isEdit
@@ -2199,7 +2205,7 @@ export class MiniInteraction {
 				
 				// Check for "Unknown Webhook" error (10015) - this means ACK hasn't reached Discord yet
 				if (fetchResponse.status === 404 && errorBody.includes("10015") && retryCount < MAX_RETRIES) {
-					const delayMs = BASE_DELAY_MS * Math.pow(2, retryCount); // Exponential backoff: 250, 500, 1000ms
+					const delayMs = BASE_DELAY_MS * Math.pow(2, retryCount); // Exponential backoff: 200, 400, 800, 1600, 3200ms
 					console.warn(
 						`[MiniInteraction] Webhook not ready yet, retrying in ${delayMs}ms (attempt ${retryCount + 1}/${MAX_RETRIES})`,
 					);
