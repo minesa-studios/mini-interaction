@@ -69,8 +69,8 @@ const SUPPORTED_MODULE_EXTENSIONS = new Set([
 
 /** Configuration parameters for the MiniInteraction client. */
 export type InteractionClientOptions = {
-	applicationId: string;
-	publicKey: string;
+	applicationId?: string;
+	publicKey?: string;
 	commandsDirectory?: string | false;
 	componentsDirectory?: string | false;
 	utilsDirectory?: string | false;
@@ -360,12 +360,15 @@ export class MiniInteraction {
 		verifyKeyImplementation,
 		timeoutConfig,
 	}: InteractionClientOptions) {
-		if (!applicationId) {
-			throw new Error("[MiniInteraction] applicationId is required");
+		const resolvedAppId = applicationId ?? (typeof process !== "undefined" ? process.env.DISCORD_APPLICATION_ID : undefined);
+		const resolvedPublicKey = publicKey ?? (typeof process !== "undefined" ? process.env.DISCORD_PUBLIC_KEY : undefined);
+
+		if (!resolvedAppId) {
+			throw new Error("[MiniInteraction] applicationId is required (or DISCORD_APPLICATION_ID env var)");
 		}
 
-		if (!publicKey) {
-			throw new Error("[MiniInteraction] publicKey is required");
+		if (!resolvedPublicKey) {
+			throw new Error("[MiniInteraction] publicKey is required (or DISCORD_PUBLIC_KEY env var)");
 		}
 
 		const fetchImpl = fetchImplementation ?? globalThis.fetch;
@@ -375,8 +378,8 @@ export class MiniInteraction {
 			);
 		}
 
-		this.applicationId = applicationId;
-		this.publicKey = publicKey;
+		this.applicationId = resolvedAppId;
+		this.publicKey = resolvedPublicKey;
 		this.fetchImpl = fetchImpl;
 		this.verifyKeyImpl = verifyKeyImplementation ?? verifyKey;
 		this.commandsDirectory =
