@@ -15,7 +15,7 @@ import {
 	MessageFlags as RawMessageFlags,
 } from "discord-api-types/v10";
 
-import type { InteractionFlags } from "../types/InteractionFlags.js";
+import { InteractionFlags } from "../types/InteractionFlags.js";
 
 const COMPONENTS_V2_TYPES = new Set<number>([
 	ComponentType.Container,
@@ -25,6 +25,8 @@ const COMPONENTS_V2_TYPES = new Set<number>([
 	ComponentType.File,
 	ComponentType.Separator,
 	ComponentType.Thumbnail,
+	18, // Label
+	19, // FileUpload
 ]);
 
 /** Union of helper flag enums and raw Discord message flags. */
@@ -119,8 +121,8 @@ export function normaliseInteractionMessageData(
 	// Automatically handle IsComponentsV2 flag if Components V2 are detected
 	if (responseData.components && Array.isArray(responseData.components)) {
 		if (containsComponentsV2(responseData.components)) {
-			const currentFlags = responseData.flags ?? 0;
-			responseData.flags = (currentFlags | (0x1 << 12)) as MessageFlags; // 0x1 << 12 is IsComponentsV2
+			const currentFlags = (responseData.flags as number) ?? 0;
+			responseData.flags = (currentFlags | InteractionFlags.IsComponentsV2) as MessageFlags;
 		}
 	}
 
