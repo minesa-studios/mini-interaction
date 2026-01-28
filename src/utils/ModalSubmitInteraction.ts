@@ -154,16 +154,25 @@ export function createModalSubmitInteraction(
 	const getTextFieldValue = (customId: string): string | undefined => {
 		for (const actionRow of interaction.data.components) {
 			if ("components" in actionRow && Array.isArray(actionRow.components)) {
-				for (const rawComponent of actionRow.components) {
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					const component = rawComponent as any;
-					if (
-						component.custom_id === customId &&
-						typeof component.value === "string"
-					) {
-						return component.value;
+				const findValue = (components: any[]): string | undefined => {
+					for (const component of components) {
+						if (
+							component.custom_id === customId &&
+							typeof component.value === "string"
+						) {
+							return component.value;
+						}
+						// Check for nested component (e.g. Label wrapper)
+						if (component.component) {
+							const found = findValue([component.component]);
+							if (found) return found;
+						}
 					}
-				}
+					return undefined;
+				};
+
+				const result = findValue(actionRow.components);
+				if (result) return result;
 			}
 		}
 		return undefined;
@@ -172,30 +181,32 @@ export function createModalSubmitInteraction(
 	/**
 	 * Helper method to get the value(s) of a select menu component by its custom ID.
 	 * Handles the nested structure of modal components (Action Rows -> Components).
+	 * Also handles nested components within wrappers (like Label components).
 	 */
 	const getSelectMenuValues = (customId: string): string[] | undefined => {
-		// 1. Access this.interaction.data.components (Array of Action Rows)
 		for (const actionRow of interaction.data.components) {
-			// 2. Iterate through these Action Rows
 			if ("components" in actionRow && Array.isArray(actionRow.components)) {
-				// 3. Inside each row, look for a component
-				for (const rawComponent of actionRow.components) {
-					// Cast to any to handle potential type definitions that might not fully support Select Menus in Modals yet
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					const component = rawComponent as any;
-
-					// 4. Match customId and check for 'values' property (specific to Select Menus)
-					if (
-						component.custom_id === customId &&
-						Array.isArray(component.values)
-					) {
-						// 5. Return its values property
-						return component.values;
+				const findValues = (components: any[]): string[] | undefined => {
+					for (const component of components) {
+						if (
+							component.custom_id === customId &&
+							Array.isArray(component.values)
+						) {
+							return component.values;
+						}
+						// Check for nested component (e.g. Label wrapper)
+						if (component.component) {
+							const found = findValues([component.component]);
+							if (found) return found;
+						}
 					}
-				}
+					return undefined;
+				};
+
+				const result = findValues(actionRow.components);
+				if (result) return result;
 			}
 		}
-		// 6. If not found, return undefined
 		return undefined;
 	};
 
