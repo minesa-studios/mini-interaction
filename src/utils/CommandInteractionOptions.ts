@@ -629,10 +629,13 @@ export function createCommandInteraction(
 					typeof data.toJSON === "function"
 					? data.toJSON()
 					: (data as APIModalInteractionResponseCallbackData);
-			return captureResponse({
+			const response = captureResponse({
 				type: InteractionResponseType.Modal,
 				data: resolvedData,
 			});
+
+			this.onAck?.(response);
+			return response;
 		},
 
 		async withTimeoutProtection<T>(

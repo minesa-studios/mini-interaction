@@ -438,10 +438,13 @@ export function createMessageComponentInteraction(
 			typeof data.toJSON === "function"
 				? data.toJSON()
 				: (data as APIModalInteractionResponseCallbackData);
-		return captureResponse({
+		const response = captureResponse({
 			type: InteractionResponseType.Modal,
 			data: resolvedData,
 		});
+
+		helpers?.onAck?.(response);
+		return response;
 	};
 
 	const editReply = async (

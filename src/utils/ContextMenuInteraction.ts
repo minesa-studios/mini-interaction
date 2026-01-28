@@ -229,10 +229,13 @@ function createContextMenuInteractionHelpers(
 	): APIModalInteractionResponse => {
 		const modalData =
 			typeof data === "object" && "toJSON" in data ? data.toJSON() : data;
-		return captureResponse({
+		const response = captureResponse({
 			type: InteractionResponseType.Modal,
 			data: modalData as APIModalInteractionResponseCallbackData,
 		});
+
+		helpers?.onAck?.(response);
+		return response;
 	};
 
 	const getResponse = (): APIInteractionResponse | null => capturedResponse;
