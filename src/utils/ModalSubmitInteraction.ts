@@ -136,12 +136,12 @@ export function createModalSubmitInteraction(
 		const response: APIInteractionResponseDeferredChannelMessageWithSource =
 			flags !== undefined
 				? {
-						type: InteractionResponseType.DeferredChannelMessageWithSource,
-						data: { flags },
-				  }
+					type: InteractionResponseType.DeferredChannelMessageWithSource,
+					data: { flags },
+				}
 				: {
-						type: InteractionResponseType.DeferredChannelMessageWithSource,
-				  };
+					type: InteractionResponseType.DeferredChannelMessageWithSource,
+				};
 
 		captureResponse(response);
 		isDeferred = true;
@@ -152,26 +152,30 @@ export function createModalSubmitInteraction(
 	const getResponse = (): APIInteractionResponse | null => capturedResponse;
 
 	const getTextFieldValue = (customId: string): string | undefined => {
-		for (const actionRow of interaction.data.components) {
-			if ("components" in actionRow && Array.isArray(actionRow.components)) {
-				const findValue = (components: any[]): string | undefined => {
-					for (const component of components) {
-						if (
-							component.custom_id === customId &&
-							typeof component.value === "string"
-						) {
-							return component.value;
-						}
-						// Check for nested component (e.g. Label wrapper)
-						if (component.component) {
-							const found = findValue([component.component]);
-							if (found) return found;
-						}
-					}
-					return undefined;
-				};
+		const findValue = (components: any[]): string | undefined => {
+			for (const component of components) {
+				if (
+					component?.custom_id === customId &&
+					typeof component.value === "string"
+				) {
+					return component.value;
+				}
+				// Nested Label wrapper: single child in .component
+				if (component?.component) {
+					const found = findValue([component.component]);
+					if (found) return found;
+				}
+			}
+			return undefined;
+		};
 
-				const result = findValue(actionRow.components);
+		for (const top of interaction.data.components) {
+			if ("components" in top && Array.isArray(top.components)) {
+				const result = findValue(top.components);
+				if (result) return result;
+			}
+			if ("component" in top && top.component) {
+				const result = findValue([top.component]);
 				if (result) return result;
 			}
 		}
@@ -180,30 +184,37 @@ export function createModalSubmitInteraction(
 
 	/**
 	 * Helper method to get the value(s) of a select menu component by its custom ID.
-	 * Handles the nested structure of modal components (Action Rows -> Components).
-	 * Also handles nested components within wrappers (like Label components).
+	 * Handles the nested structure of modal components (Action Rows -> Components,
+	 * and Label -> single component). Select menus in modals are typically inside
+	 * Label components, not Action Rows.
 	 */
 	const getSelectMenuValues = (customId: string): string[] | undefined => {
-		for (const actionRow of interaction.data.components) {
-			if ("components" in actionRow && Array.isArray(actionRow.components)) {
-				const findValues = (components: any[]): string[] | undefined => {
-					for (const component of components) {
-						if (
-							component.custom_id === customId &&
-							Array.isArray(component.values)
-						) {
-							return component.values;
-						}
-						// Check for nested component (e.g. Label wrapper)
-						if (component.component) {
-							const found = findValues([component.component]);
-							if (found) return found;
-						}
-					}
-					return undefined;
-				};
+		const findValues = (components: any[]): string[] | undefined => {
+			for (const component of components) {
+				if (
+					component?.custom_id === customId &&
+					Array.isArray(component.values)
+				) {
+					return component.values;
+				}
+				// Nested Label wrapper: single child in .component
+				if (component?.component) {
+					const found = findValues([component.component]);
+					if (found) return found;
+				}
+			}
+			return undefined;
+		};
 
-				const result = findValues(actionRow.components);
+		for (const top of interaction.data.components) {
+			// Action Row: multiple components in .components
+			if ("components" in top && Array.isArray(top.components)) {
+				const result = findValues(top.components);
+				if (result) return result;
+			}
+			// Label: select menu (and other modal components) wrapped in .component
+			if ("component" in top && top.component) {
+				const result = findValues([top.component]);
 				if (result) return result;
 			}
 		}
