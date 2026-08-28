@@ -9,7 +9,8 @@ endpoint file.
 
 | Path | Purpose |
 | --- | --- |
-| `api/interactions.ts` | The entire endpoint — 3 lines, auto-discovers all handlers |
+| `api/interactions.ts` | Vercel endpoint — 3 lines, auto-discovers all handlers |
+| `api/cf-interactions.ts` | Cloudflare Workers endpoint — same auto-discovery |
 | `api/index.ts` | Linked-roles landing page (`index.html`) |
 | `api/discord-oauth-callback.ts` | OAuth2 callback: stores tokens in `MiniDatabase`, updates role metadata |
 | `src/commands/ping.ts` | `/ping` — Components V2 container + section + button |
@@ -19,6 +20,7 @@ endpoint file.
 | `src/modals/ping_modal.ts` | Modal submit handler |
 | `src/utils/database.ts` | Shared `MiniDatabase` instance + helpers |
 | `scripts/register.ts` | Auto-discovers and registers commands + linked-role metadata |
+| `wrangler.toml` | Cloudflare Workers deployment config |
 
 ## 1. Prepare
 
@@ -36,7 +38,7 @@ npm run register
 Set `DISCORD_GUILD_ID` to register instantly on one guild; leave it unset for
 global registration.
 
-## 3. Deploy to Vercel
+## 3. Deploy — Vercel
 
 ```bash
 npm install -g vercel
@@ -52,6 +54,42 @@ Then in the [Developer Portal](https://discord.com/developers/applications):
 > [!TIP]
 > Importing the repository into Vercel and adding the environment variables is
 > even easier — no CLI needed.
+
+## 3. Deploy — Cloudflare Workers
+
+```bash
+# Install wrangler CLI if you haven't
+npm install -g wrangler
+
+# Login to Cloudflare
+wrangler login
+
+# Set secrets (interactive prompts)
+wrangler secret put DISCORD_BOT_TOKEN
+wrangler secret put DISCORD_CLIENT_SECRET
+wrangler secret put DISCORD_REDIRECT_URI
+wrangler secret put MONGODB_URI
+
+# Local development
+npm run cf:dev
+
+# Deploy to Cloudflare
+npm run cf:deploy
+```
+
+Then in the [Developer Portal](https://discord.com/developers/applications):
+
+- **Interactions Endpoint URL** → `https://<your-worker>.workers.dev`
+- **OAuth2 redirect** → `https://<your-worker>.workers.dev/api/discord-oauth-callback`
+
+For local development, copy `.dev.vars.example` to `.dev.vars` and fill in the
+secrets. The `wrangler.toml` `[vars]` section holds non-secret configuration.
+
+> [!NOTE]
+> Cloudflare Workers uses `api/cf-interactions.ts` as the entry point instead of
+> `api/interactions.ts`. The endpoint handler receives `(request, env, ctx)`
+> instead of Node.js `(req, res)` — the `env` parameter provides access to
+> secrets and variables configured in the Cloudflare dashboard.
 
 ## Adding features
 
@@ -113,6 +151,17 @@ Discord's API.
 | Command | `interaction.options.getString()`, `.getUser()`, `.getInteger()`, etc. | `interaction.reply()`, `interaction.deferReply()`, `interaction.editReply()`, `interaction.followUp()` |
 | Component | `interaction.getStringValues()`, `interaction.getUser()`, `interaction.showModal()` | `interaction.reply()`, `interaction.deferReply()` |
 | Modal | `interaction.getTextFieldValue()`, `interaction.getSelectMenuValues()`, `interaction.getRadioGroupValue()` | `interaction.reply()` |
+
+## Platform differences
+
+| | Vercel (Node.js) | Cloudflare Workers |
+|---|---|---|
+| **Endpoint** | `api/interactions.ts` | `api/cf-interactions.ts` |
+| **Handler** | `mini.createNodeHandler()` | `mini.createCloudflareHandler()` |
+| **Signature** | `(req, res)` | `(request, env, ctx)` |
+| **Secrets** | `.env` file / Vercel dashboard | `wrangler.toml [vars]` + `wrangler secret put` |
+| **Background tasks** | `@vercel/functions` `waitUntil` | `ctx.waitUntil()` |
+| **OAuth HTML** | Read from filesystem at runtime | Bundled with worker via wrangler |
 
 ## Environment variables
 

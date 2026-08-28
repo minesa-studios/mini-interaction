@@ -1,7 +1,7 @@
 {
   "name": "@minesa-org/mini-interaction",
-  "version": "0.10.0",
-  "description": "Mini interaction, connecting your app with Discord via HTTP-interaction (Vercel support).",
+  "version": "0.11.0",
+  "description": "Mini interaction, connecting your app with Discord via HTTP-interaction (Vercel + Cloudflare Workers support).",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -33,6 +33,7 @@
     "interactions",
     "http-interaction",
     "vercel",
+    "cloudflare-workers",
     "typescript"
   ],
   "author": "Minesa",

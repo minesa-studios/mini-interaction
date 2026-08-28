@@ -191,7 +191,7 @@ export {
 	MiniInteraction,
 	LegacyMiniInteractionAdapter,
 } from "./compat/MiniInteraction.js";
-export type { MiniInteractionOptions } from "./compat/MiniInteraction.js";
+export type { MiniInteractionOptions, CloudflareEnv, CloudflareExecutionContext } from "./compat/MiniInteraction.js";
 export type { APIRadioComponent, APIRadioOption } from "./types/radio.js";
 export {
 	RADIO_COMPONENT_TYPE,

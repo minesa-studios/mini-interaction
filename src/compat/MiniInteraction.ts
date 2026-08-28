@@ -93,6 +93,12 @@ type OAuthCallbackTemplates = {
 
 type InitialResponseCommitter = (response: APIInteractionResponse) => boolean;
 
+export type CloudflareEnv = Record<string, string>;
+
+export type CloudflareExecutionContext = {
+	waitUntil: (promise: Promise<unknown>) => void;
+};
+
 type NodeRequest = {
 	body?: unknown;
 	rawBody?: string | Uint8Array | Buffer;
@@ -736,11 +742,22 @@ export class MiniInteraction {
 		return results.flat();
 	}
 
-	private scheduleBackgroundTask(promise: Promise<unknown>): void {
-		try {
-			vercelWaitUntil(promise);
-		} catch {
-			void promise;
+	private scheduleBackgroundTask(
+		promise: Promise<unknown>,
+		fallbackWaitUntil?: (promise: Promise<unknown>) => void,
+	): void {
+		if (fallbackWaitUntil) {
+			try {
+				fallbackWaitUntil(promise);
+			} catch {
+				void promise;
+			}
+		} else {
+			try {
+				vercelWaitUntil(promise);
+			} catch {
+				void promise;
+			}
 		}
 	}
 
@@ -920,6 +937,316 @@ export class MiniInteraction {
 		}
 
 		return undefined;
+	}
+
+	// ───────────────────────────────────────────────
+	// Cloudflare Workers support
+	// ───────────────────────────────────────────────
+
+	/**
+	 * Create a Cloudflare Workers handler.
+	 *
+	 * ```ts
+	 * import { MiniInteraction } from "@minesa-org/mini-interaction";
+	 * const mini = new MiniInteraction();
+	 * export default {
+	 *   async fetch(request: Request, env: Record<string, string>, ctx: ExecutionContext): Promise<Response> {
+	 *     return mini.createCloudflareHandler()(request, env, ctx);
+	 *   }
+	 * };
+	 * ```
+	 */
+	createCloudflareHandler(): (
+		request: Request,
+		env: CloudflareEnv,
+		ctx: CloudflareExecutionContext,
+	) => Promise<Response> {
+		return async (
+			request: Request,
+			env: CloudflareEnv,
+			ctx: CloudflareExecutionContext,
+		): Promise<Response> => {
+			let responseSent = false;
+			let committedResponse: Response | undefined;
+			let resolveInitialCommit: (() => void) | undefined;
+			const initialCommitPromise = new Promise<void>((resolve) => {
+				resolveInitialCommit = resolve;
+			});
+
+			const commitInitialResponse: InitialResponseCommitter = (response) => {
+				if (responseSent) return false;
+				committedResponse = new Response(JSON.stringify(response), {
+					status: 200,
+					headers: { "Content-Type": "application/json; charset=utf-8" },
+				});
+				responseSent = true;
+				resolveInitialCommit?.();
+				return true;
+			};
+
+			try {
+				const body = await request.text();
+				const signature = request.headers.get("x-signature-ed25519") ?? undefined;
+				const timestamp = request.headers.get("x-signature-timestamp") ?? undefined;
+				const publicKey =
+					this.options.publicKey ??
+					env.DISCORD_PUBLIC_KEY ??
+					process.env.DISCORD_PUBLIC_KEY;
+
+				if (!publicKey) {
+					return new Response(
+						JSON.stringify({ error: "[MiniInteraction] Missing DISCORD_PUBLIC_KEY." }),
+						{ status: 500, headers: { "Content-Type": "application/json" } },
+					);
+				}
+
+				if (!signature || !timestamp) {
+					return new Response(
+						JSON.stringify({ error: "[MiniInteraction] Missing Discord signature headers." }),
+						{ status: 401, headers: { "Content-Type": "application/json" } },
+					);
+				}
+
+				const interaction = await verifyAndParseInteraction({
+					body,
+					signature,
+					timestamp,
+					publicKey,
+				});
+
+				if (interaction.type === InteractionType.Ping) {
+					return new Response(
+						JSON.stringify({ type: InteractionResponseType.Pong }),
+						{ status: 200, headers: { "Content-Type": "application/json" } },
+					);
+				}
+
+				const dispatchPromise = this.dispatch(interaction, commitInitialResponse);
+				const backgroundPromise = dispatchPromise.catch((error) => {
+					if (this.options.debug) {
+						console.error(
+							"[MiniInteraction] Background interaction processing failed",
+							error,
+						);
+					}
+				});
+				const settled = await Promise.race([
+					dispatchPromise.then(
+						(response) => ({ kind: "result" as const, response }),
+						(error) => ({ kind: "error" as const, error }),
+					),
+					initialCommitPromise.then(() => ({ kind: "committed" as const })),
+				]);
+
+				if (settled.kind === "committed") {
+					this.scheduleBackgroundTask(backgroundPromise, ctx.waitUntil);
+					return committedResponse!;
+				}
+
+				if (settled.kind === "error") {
+					throw settled.error;
+				}
+
+				const response = settled.response;
+				if (!responseSent) {
+					const body = response ?? this.getDefaultInitialResponse(interaction);
+					committedResponse = new Response(JSON.stringify(body), {
+						status: 200,
+						headers: { "Content-Type": "application/json; charset=utf-8" },
+					});
+					responseSent = true;
+				}
+
+				return committedResponse!;
+			} catch (error) {
+				const message =
+					error instanceof Error ? error.message : "[MiniInteraction] Unknown error";
+				if (this.options.debug) {
+					console.error("[MiniInteraction] createCloudflareHandler failed", error);
+				}
+				return new Response(
+					JSON.stringify({ error: message }),
+					{ status: 500, headers: { "Content-Type": "application/json" } },
+				);
+			}
+		};
+	}
+
+	/**
+	 * Cloudflare Workers version of discordOAuthVerificationPage().
+	 * Returns a handler that reads HTML from the provided string instead of the filesystem.
+	 *
+	 * ```ts
+	 * import { MiniInteraction } from "@minesa-org/mini-interaction";
+	 * import landingHtml from "../index.html";
+	 * const mini = new MiniInteraction();
+	 * export const oauthLanding = mini.cloudflareOAuthVerificationPage({
+	 *   html: landingHtml,
+	 * });
+	 * ```
+	 */
+	cloudflareOAuthVerificationPage(options: {
+		html: string;
+		scopes?: string[];
+	}): (request: Request, env: CloudflareEnv, ctx: CloudflareExecutionContext) => Promise<Response> {
+		return async (
+			request: Request,
+			env: CloudflareEnv,
+			_ctx: CloudflareExecutionContext,
+		): Promise<Response> => {
+			const oauthConfig = this.getOAuthConfigFromEnv(env);
+			const { url, state } = generateOAuthUrl(
+				oauthConfig,
+				options.scopes ?? [
+					"applications.commands",
+					"identify",
+					"guilds",
+					"role_connections.write",
+				],
+			);
+			const rendered = options.html.replaceAll("{{OAUTH_URL_RAW}}", url);
+			return new Response(rendered, {
+				status: 200,
+				headers: {
+					"Content-Type": "text/html; charset=utf-8",
+					"Set-Cookie": `mini_oauth_state=${encodeURIComponent(state)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=900`,
+				},
+			});
+		};
+	}
+
+	/**
+	 * Cloudflare Workers version of discordOAuthCallback().
+	 * Returns a handler that renders HTML from strings instead of reading from the filesystem.
+	 *
+	 * ```ts
+	 * import { MiniInteraction } from "@minesa-org/mini-interaction";
+	 * import successHtml from "../public/pages/connected.html";
+	 * import failedHtml from "../public/pages/failed.html";
+	 * const mini = new MiniInteraction();
+	 * export const oauthCallback = mini.cloudflareOAuthCallback({
+	 *   templates: {
+	 *     success: { html: successHtml },
+	 *     missingCode: { html: failedHtml },
+	 *     oauthError: { html: failedHtml },
+	 *     invalidState: { html: failedHtml },
+	 *     serverError: { html: failedHtml },
+	 *   },
+	 *   onAuthorize: async ({ user, tokens }) => {
+	 *     // Store tokens, update metadata, etc.
+	 *   },
+	 * });
+	 * ```
+	 */
+	cloudflareOAuthCallback(options: {
+		templates: {
+			success: { html: string };
+			missingCode: { html: string };
+			oauthError: { html: string };
+			invalidState: { html: string };
+			serverError: { html: string };
+		};
+		onAuthorize?: (payload: {
+			user: DiscordUser;
+			tokens: OAuthTokens;
+			request: Request;
+			env: CloudflareEnv;
+		}) => Promise<void> | void;
+	}): (
+		request: Request,
+		env: CloudflareEnv,
+		ctx: CloudflareExecutionContext,
+	) => Promise<Response> {
+		return async (
+			request: Request,
+			env: CloudflareEnv,
+			_ctx: CloudflareExecutionContext,
+		): Promise<Response> => {
+			try {
+				const requestUrl = new URL(request.url);
+				const error = requestUrl.searchParams.get("error");
+				const code = requestUrl.searchParams.get("code");
+				const state = requestUrl.searchParams.get("state");
+				const cookieState = this.getCookieFromHeaders(request.headers, "mini_oauth_state");
+
+				if (error) {
+					return this.renderTemplateResponse(options.templates.oauthError);
+				}
+
+				if (!code) {
+					return this.renderTemplateResponse(options.templates.missingCode);
+				}
+
+				if (state && cookieState && state !== cookieState) {
+					return this.renderTemplateResponse(options.templates.invalidState);
+				}
+
+				const tokens = await getOAuthTokens(code, this.getOAuthConfigFromEnv(env));
+				const user = await getDiscordUser(tokens.access_token);
+
+				await options.onAuthorize?.({ user, tokens, request, env });
+
+				const response = this.renderTemplateResponse(options.templates.success);
+				response.headers.set(
+					"Set-Cookie",
+					"mini_oauth_state=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0",
+				);
+				return response;
+			} catch (error) {
+				if (this.options.debug) {
+					console.error("[MiniInteraction] cloudflareOAuthCallback failed", error);
+				}
+				return this.renderTemplateResponse(options.templates.serverError);
+			}
+		};
+	}
+
+	private getOAuthConfigFromEnv(env?: CloudflareEnv): {
+		appId: string;
+		appSecret: string;
+		redirectUri: string;
+	} {
+		const appId =
+			this.options.applicationId ??
+			(env?.DISCORD_APPLICATION_ID) ??
+			process.env.DISCORD_APPLICATION_ID ??
+			process.env.DISCORD_APP_ID;
+		const appSecret =
+			(env?.DISCORD_CLIENT_SECRET) ??
+			process.env.DISCORD_CLIENT_SECRET ??
+			process.env.DISCORD_APPLICATION_SECRET;
+		const redirectUri =
+			(env?.DISCORD_REDIRECT_URI) ??
+			process.env.DISCORD_REDIRECT_URI;
+
+		if (!appId || !appSecret || !redirectUri) {
+			throw new Error(
+				"[MiniInteraction] Missing OAuth config. Expected DISCORD_APPLICATION_ID, DISCORD_CLIENT_SECRET and DISCORD_REDIRECT_URI.",
+			);
+		}
+
+		return { appId, appSecret, redirectUri };
+	}
+
+	private getCookieFromHeaders(headers: Headers, name: string): string | undefined {
+		const cookieHeader = headers.get("cookie");
+		if (!cookieHeader) return undefined;
+
+		for (const rawPart of cookieHeader.split(";")) {
+			const [rawKey, ...rawValue] = rawPart.trim().split("=");
+			if (rawKey === name) {
+				return decodeURIComponent(rawValue.join("="));
+			}
+		}
+
+		return undefined;
+	}
+
+	private renderTemplateResponse(template: { html: string }): Response {
+		return new Response(template.html, {
+			status: 200,
+			headers: { "Content-Type": "text/html; charset=utf-8" },
+		});
 	}
 }
 

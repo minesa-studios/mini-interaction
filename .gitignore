@@ -14,3 +14,6 @@ yarn-error.log*
 Thumbs.db
 .idea/
 .vscode/
+
+# Cloudflare Workers local secrets
+.dev.vars
